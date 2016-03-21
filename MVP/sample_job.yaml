@@ -14,7 +14,8 @@
         - shell: |
             set -x
 
-            # Here goes your shell commands for submitting beaker job here, and save the job ID into env var BKR_JOBID"
+            # Here goes your shell commands for submitting beaker job here, and save the job ID into env var BKR_JOBID
+            # E.g. `bkr workflow-tomorrow --distro=$distro --task-file=$taskfile $other_args`
             BKR_JOBID="J:1000000"
 
             bkr job-watch $BKR_JOBID
