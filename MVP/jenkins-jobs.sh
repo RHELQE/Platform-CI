@@ -26,4 +26,5 @@ fi
 
 set -ex
 upgrade_jjb
-$HOME/.local/bin/jenkins-jobs --ignore-cache --conf config.ini $1 .
+. $HOME/.bash_profile
+jenkins-jobs --ignore-cache --conf config.ini $1 .

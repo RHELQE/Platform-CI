@@ -2,7 +2,7 @@
     name: defaults-build
     description: |
         Managed by Jenkins Job Builder. Do not edit via web.
-    node: 'jslave-platform' #[MVP] please replace this value with jenkins slave name/label of your own.
+    node: 'jslave-platform-rhel7' #[MVP] please replace this value with jenkins slave name/label of your own.
     #concurrent: true
     parameters:
         - string:
