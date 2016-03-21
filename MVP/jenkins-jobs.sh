@@ -9,11 +9,10 @@ need_pip()
 
 upgrade_jjb()
 {
-    which pip > /dev/null || need_pip
-    set -e
-    pip install --quiet --user --upgrade pip
-    pip install --quiet --user --upgrade jenkins-job-builder
-    pip install --quiet --user --upgrade --index-url=http://ci-ops-jenkins-update-site.rhev-ci-vms.eng.rdu2.redhat.com/packages/simple --trusted-host ci-ops-jenkins-update-site.rhev-ci-vms.eng.rdu2.redhat.com jenkins-ci-sidekick
+    which pip || need_pip
+    pip install --user --upgrade pip
+    pip install --user --upgrade jenkins-job-builder
+    pip install --user --upgrade --index-url=http://ci-ops-jenkins-update-site.rhev-ci-vms.eng.rdu2.redhat.com/packages/simple --trusted-host ci-ops-jenkins-update-site.rhev-ci-vms.eng.rdu2.redhat.com jenkins-ci-sidekick
 }
 
 
@@ -25,6 +24,6 @@ then
     exit 1
 fi
 
+set -ex
 upgrade_jjb
-
 jenkins-jobs --ignore-cache --conf config.ini $1 .
