@@ -15,7 +15,7 @@ Minimal Viable Product (MVP) is a set of Jenkins job definition (and supporting 
 
   >$ cd platform-ci/MVP
 
-1. ####Modify [sample_job.yaml](/sample_job.yaml/) with your own tests *(skip this step if you just want a taste of creating job)*
+1. ####Modify [sample_job.yaml](/MVP/sample_job.yaml/) with your own tests *(skip this step if you just want a taste of creating job)*
 
   - `ownership`
   
@@ -48,7 +48,7 @@ Minimal Viable Product (MVP) is a set of Jenkins job definition (and supporting 
 
 ## Optional yet Recommended
 
-- ####Update [config.ini](/config.ini/) with your own Jenkins credential
+- ####Update [config.ini](/MVP/config.ini/) with your own Jenkins credential
 
         [jenkins]
         user=
