@@ -24,7 +24,6 @@ then
     exit 1
 fi
 
-set -e
+set -ex
 upgrade_jjb
-. $HOME/.bash_profile
 jenkins-jobs --ignore-cache --conf config.ini $1 .
