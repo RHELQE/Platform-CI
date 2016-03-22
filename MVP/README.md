@@ -42,11 +42,12 @@ Minimal Viable Product (MVP) is a minimized set of Jenkins job definition (and s
 
      >$ ./jenkins-jobs.sh update
 
-  - Want a dry-run before creating jobs? (test your test is a good habit)
+  - Want a dry-run before creating jobs? (validate your job definition)
 
      >$ ./jenkins-jobs.sh test
 
-## Optional yet Recommended
+---
+### Optional yet Recommended
 
 - ####Update [config.ini](/MVP/config.ini/) with your own Jenkins credential
 
@@ -57,13 +58,15 @@ Minimal Viable Product (MVP) is a minimized set of Jenkins job definition (and s
 
   **user** is actuall your RH kerb ID.
 
-  **password** is a static API token can be found by via `Show API Token...` button on your Jenkins user config page.
-  (from top right corner of Jenkins homepage - or via this URL: *https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/user/__${user}__/configure*)
+  **password** is a static API token can be found by via `Show API Token...` button on your Jenkins user config page. (*https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/user/${user}/configure*)
 
 - ####Run jobs on your own Jenkins slave
-  There is a **node** parameter in [defaults-build.yaml](/MVP/defaults-build.yaml/) (which can also be overwritten in job YAML) to specify your jenkins slave
+
+    There is a **node** parameter in [defaults-build.yaml](/MVP/defaults-build.yaml/) for running your jos on a team/individual slave.
 
     `node: 'jslave-platform-rhel7'`
+
+    You can also specify it in job YAML to overwrite the default value from template YAML.
 
 ---
 Please feel free to reach [Linqing Lu](mailto:lilu@redhat.com) or open an [issue](https://github.com/RHQE/platform-ci/issues) here if any question about this MVP.
