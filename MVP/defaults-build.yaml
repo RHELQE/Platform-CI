@@ -2,8 +2,7 @@
     name: defaults-build
     description: |
         Managed by Jenkins Job Builder. Do not edit via web.
-    node: 'jslave-platform-rhel7' #[MVP] please replace this value with jenkins slave name/label of your own.
-    #concurrent: true
+    node: 'jslave-platform-rhel7'
     parameters:
         - string:
             name: id
@@ -14,6 +13,8 @@
         - string:
             name: CI_MESSAGE
         - string:
+            name: target
+        - string:
             name: tag 
         - string:
             name: name
@@ -21,54 +22,22 @@
             name: version
         - string:
             name: release
-    logrotate:
-        daysToKeep: 90
-        #numToKeep: 20
-        artifactDaysToKeep: 30
-        #artifactNumToKeep: 10
     wrappers:
         - ansicolor
         - workspace-cleanup
         - timestamps
-        #- inject-ownership-variables:
-            #job-variables: true
-            #node-variables: false
         - build-name:
             name: ${{ENV,var="name"}}-${{ENV,var="version"}}-${{ENV,var="release"}}
-                #${{ENV,var="tag"}}
-        #- timeout:
-            #timeout: 180
-            #timeout-var: 'PROVISION_TIMEOUT'
-            #type: absolute
-            #fail: true
     publishers:
         - archive:
             artifacts: '*.txt, *.xml'
             allow-empty: 'true'
         - junit:
             results: 'J*.xml'
-            #test-stability: true
         - email-ext:
             recipients: ${{OWNERSHIP,var="JOB_COOWNERS_EMAILS"}}
-            #reply-to: $DEFAULT_REPLYTO
-            #content-type: default
-            #subject: $DEFAULT_SUBJECT
-            #body: $DEFAULT_CONTENT
             attach-build-log: true
             always: true
-            #unstable: true
-            #first-failure: true
-            #not-built: true
-            #aborted: true
-            #regression: true
             failure: false
-            #improvement: true
-            #still-failing: true
-            #success: true
-            #fixed: true
-            #still-unstable: true
-            #pre-build: true
-            #matrix-trigger: only-configurations
             send-to:
-                #- requester
                 - recipients

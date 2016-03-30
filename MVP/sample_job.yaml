@@ -1,6 +1,7 @@
 - job-template:
     name: '{name}-{component}'
     defaults: defaults-build
+    #node: 'jslave-of-your-own'
     properties:
         - ownership:
             owner: lilu
@@ -16,8 +17,8 @@
 
             # Here goes your shell commands for submitting beaker job here, and save the job ID into env var BKR_JOBID
             # E.g. `bkr workflow-tomorrow --distro=$distro --task-file=$taskfile $other_args`
-            BKR_JOBID="J:1000000"
 
+            BKR_JOBID="J:1000000"
             bkr job-watch $BKR_JOBID
             bkr job-results --format junit-xml $BKR_JOBID > $WORKSPACE/$BKR_JOBID.xml
 
