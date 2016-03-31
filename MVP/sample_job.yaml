@@ -14,11 +14,10 @@
     builders:
         - shell: |
             set -x
+            # Here goes your shell commands for submitting beaker job here, and save the job ID into env var BKR_JOBID. E.g:
 
-            # Here goes your shell commands for submitting beaker job here, and save the job ID into env var BKR_JOBID
-            # E.g. `bkr workflow-tomorrow --distro=$distro --task-file=$taskfile $other_args`
-
-            BKR_JOBID="J:1000000"
+            bkr job-submit $YOUR_TEST_xml | tee $WORKSPACE/bkr_job.txt
+            BKR_JOBID=`cut -d\' -f2 $WORKSPACE/bkr_job.txt`
             bkr job-watch $BKR_JOBID
             bkr job-results --format junit-xml $BKR_JOBID > $WORKSPACE/$BKR_JOBID.xml
 

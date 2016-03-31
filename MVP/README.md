@@ -41,9 +41,7 @@ Minimal Viable Product (MVP) is a minimized set of Jenkins job definition (and s
 
   - `node`
 
-     By specifying this **node** parameter in [sample_job.yaml](/MVP/sample_job.yaml/), you can run the `shell` commands on team/individual slave - which will be able to access team-specific test resources.
-
-    `node: 'jslave-platform-rhel7'`
+     By specifying this **node** parameter, you can run the `shell` commands on team/individual slave - which will be able to access team-specific test resources with keytab configured on it.
 
 1. ####Create Jenkins job
 
