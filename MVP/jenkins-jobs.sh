@@ -20,7 +20,7 @@ if [ $# != 1 ]
 then
     echo "  To test Jenkins job definition:  $0 test"
     echo "  To create/update Jenkins jobs:   $0 update"
-    echo "  Please make sure config file 'config.ini' in current dir as well."
+    echo "  Please make sure 'config.ini' is updated with your Jenkins credentials."
     exit 1
 fi
 

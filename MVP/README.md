@@ -15,60 +15,59 @@ Minimal Viable Product (MVP) is a minimized set of Jenkins job definition (and s
 
   >$ cd platform-ci/MVP
 
-1. ####Modify [sample_job.yaml](/MVP/sample_job.yaml/) with your own tests *(skip this step if you just want a taste of creating job)*
-
-  - `ownership`
-
-     Replace those names with actual owner/co-owners of your test.
-     They will receive Jenkins email notifications accordingly.
+1. ####Tweak [sample_job.yaml](/MVP/sample_job.yaml/) with your own test parameters
 
   - `project` - `name`/`component`
 
-     **name** is unique as identification of the job set.
-     And job trigger will watch brew builds for **component**.
+     **name** is unique for identifying your job set.
+
+     And job trigger is watching candidate brew builds for **component** by default.
 
   - `shell`
 
      This is THE key part of your job.
-     Fill in shell commands you've been using for submitting automation jobs in Beaker.
 
-     E.g. download/clone test metadata from team repo and run `bkr workflow-tomorrow` or `bkr job-submit`
+     Fill in the commands you've been using for submitting tests into Beaker.
 
-     (Keep the last two lines `bkr job-watch` and `bkr job-results`. They'll collect test results when jobs end.)
+     E.g. `bkr workflow-tomorrow -f $your_taskfile` or `bkr job-submit $your_test.xml`
 
-1. ####Create or update your jobs
+     (`bkr job-watch` and `bkr job-results` will watch the job and collect results when it finishes.)
 
-  - Create/Update your jobs to Platform Jenkins master (Finally!)
+  - `ownership`
 
-     >$ ./jenkins-jobs.sh update
+     Replace those names with actual owner/co-owners of your test.
 
-  - Want a dry-run before creating jobs? (validate your job definition)
+     They will receive Jenkins email notifications accordingly.
 
-     >$ ./jenkins-jobs.sh test
+  - `node`
 
-1. ####Done
+     By specifying this **node** parameter in [sample_job.yaml](/MVP/sample_job.yaml/), you can run the `shell` commands on team/individual slave - which will be able to access team-specific test resources.
 
----
-### Optional yet Recommended
+    `node: 'jslave-platform-rhel7'`
 
-- ####Update [config.ini](/MVP/config.ini/) with your own Jenkins credential
+1. ####Create Jenkins job
+
+  - Update [config.ini](/MVP/config.ini/) with your credentials on Platform Jenkins Master (PJM)
 
         [jenkins]
         user=
         password=
         url=https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/
 
-  **user** is actuall your RH kerb ID.
+    **user** is your username of PJM - which is same as your kerberos ID.
 
-  **password** is a static API token can be found by via `Show API Token...` button on your Jenkins user config page. (*https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/user/${user}/configure*)
+    **password** is an API token which can be found by via `Show API Token...` button on your user configure page. (*https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/user/${user}/configure*)
 
-- ####Run jobs on your own Jenkins slave
+  - Create/Update your jobs to PJM (Finally!)
 
-    There is a **node** parameter in [defaults-build.yaml](/MVP/defaults-build.yaml/) for running your jos on a team/individual slave.
+     >$ ./jenkins-jobs.sh update
 
-    `node: 'jslave-platform-rhel7'`
+  - Want a dry-run before creating jobs on PJM? (validate your job definition)
 
-    You can also specify it in job YAML to overwrite the default value from template YAML.
+     >$ ./jenkins-jobs.sh test
+
+1. ####Done
+
 
 ---
 Please feel free to reach [Linqing Lu](mailto:lilu@redhat.com) or open an [issue](https://github.com/RHQE/platform-ci/issues) here if any question about this MVP.
