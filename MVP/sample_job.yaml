@@ -5,9 +5,6 @@
     properties:
         - ownership:
             owner: lilu
-            co-owners:
-                - lilu
-                - lilu
     triggers:
         - ci-trigger:
             jms-selector: "name = '{component}' AND CI_TYPE = 'brew-tag' AND (tag LIKE 'RHEL-6._-candidate' OR tag LIKE 'rhel-7._-candidate')"
