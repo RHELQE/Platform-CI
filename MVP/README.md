@@ -17,6 +17,10 @@ Minimal Viable Product (MVP) is a minimized set of Jenkins job definition (and s
 
 1. ####Tweak [sample_job.yaml](/MVP/sample_job.yaml/) with your own test parameters
 
+  *Job YAMLs store parameters which are specific for your testing jobs. It's recommended for you to maintain them under version control - better within a git repo.*
+
+  *Each job YAML file may contain one or more sets of job defintion, and multiple job YAML files can be saved in same folder. They work together with the template YAML to provide detailed configurations for creating/updating Jenkins jobs.*
+
   - `project` - `name`/`component`
 
      **name** is unique for identifying your job set.
