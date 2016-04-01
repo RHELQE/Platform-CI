@@ -60,9 +60,13 @@ Minimal Viable Product (MVP) is a minimized set of Jenkins job definition (and s
 
     **password** is an API token which can be found by via `Show API Token...` button on your user configure page. (*https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/user/${user}/configure*)
 
+    It's requried for next step.
+
   - Create/Update your jobs to PJM (Finally!)
 
-    We have a simple script [jenkins-jobs.sh](/MVP/jenkins-jobs.sh/) to help you doing it. It is basically a wrapper of [Jenkins Job Builder](http://ci.openstack.org/jenkins-job-builder/) along with RH CI plugin. The `config.ini` is prepare for this step.
+    There is a simple script [jenkins-jobs.sh](/MVP/jenkins-jobs.sh/) to help you with this step.
+
+    It is basically a wrapper of [Jenkins Job Builder](http://ci.openstack.org/jenkins-job-builder/) along with necessary plugins.
 
      >$ ./jenkins-jobs.sh update
 
