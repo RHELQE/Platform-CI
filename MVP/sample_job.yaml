@@ -4,10 +4,10 @@
     #node: 'jslave-of-your-own'
     properties:
         - ownership:
-            owner: lilu
+            owner: your_ID
     triggers:
         - ci-trigger:
-            jms-selector: "name = '{component}' AND CI_TYPE = 'brew-tag' AND (tag LIKE 'RHEL-6._-candidate' OR tag LIKE 'rhel-7._-candidate')"
+            jms-selector: "name = '{component}' AND CI_TYPE = 'brew-tag' AND (tag LIKE 'RHEL-%-candidate' OR tag LIKE 'rhel-%-candidate')"
     builders:
         - shell: |
             set -x
