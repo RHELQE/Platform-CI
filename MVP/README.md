@@ -62,9 +62,11 @@ Minimal Viable Product (MVP) is a minimized set of Jenkins job definition (and s
 
   - Create/Update your jobs to PJM (Finally!)
 
+    We have a simple script [jenkins-jobs.sh](/MVP/jenkins-jobs.sh/) to help you doing it. It is basically a wrapper of [Jenkins Job Builder](http://ci.openstack.org/jenkins-job-builder/) along with RH CI plugin. The `config.ini` is prepare for this step.
+
      >$ ./jenkins-jobs.sh update
 
-  - Want a dry-run before creating jobs on PJM? (validate your job definition)
+  - Or, you want a dry-run before actually creating jobs on PJM?
 
      >$ ./jenkins-jobs.sh test
 
