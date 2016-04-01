@@ -49,18 +49,11 @@ Minimal Viable Product (MVP) is a minimized set of Jenkins job definition (and s
 
 1. ####Create Jenkins job
 
-  - Update [config.ini](/MVP/config.ini/) with your credentials on Platform Jenkins Master (PJM)
+  - Update [config.ini](/MVP/config.ini/) with your credentials on Platform Jenkins Master (PJM). It's requried for next step.
 
-        [jenkins]
-        user=
-        password=
-        url=https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/
-
-    **user** is your username of PJM - which is same as your kerberos ID.
+    **user** is your username of PJM - same as your kerberos ID.
 
     **password** is an API token which can be found by via `Show API Token...` button on your user configure page. (*https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/user/${user}/configure*)
-
-    It's requried for next step.
 
   - Create/Update your jobs to PJM (Finally!)
 
