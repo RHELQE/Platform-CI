@@ -1,7 +1,5 @@
 - defaults:
     name: defaults-build
-    description: |
-        Managed by Jenkins Job Builder. Do not edit via web.
     node: 'jslave-platform-rhel7'
     parameters:
         - string:
