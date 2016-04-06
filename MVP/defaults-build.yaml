@@ -1,25 +1,6 @@
 - defaults:
     name: defaults-build
     node: 'jslave-platform-rhel7'
-    parameters:
-        - string:
-            name: id
-        - string:
-            name: task_id
-        - string:
-            name: CI_TYPE
-        - string:
-            name: CI_MESSAGE
-        - string:
-            name: target
-        - string:
-            name: tag 
-        - string:
-            name: name
-        - string:
-            name: version
-        - string:
-            name: release
     wrappers:
         - ansicolor
         - workspace-cleanup
@@ -31,10 +12,9 @@
             artifacts: '*.txt, *.xml'
             allow-empty: 'true'
         - junit:
-            results: 'J*.xml'
+            results: '*.xml'
         - email-ext:
             recipients: ${{OWNERSHIP,var="JOB_COOWNERS_EMAILS"}}
-            attach-build-log: true
             always: true
             failure: false
             send-to:
