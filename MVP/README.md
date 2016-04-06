@@ -67,10 +67,12 @@ Minimal Viable Product (MVP) is a minimized set of Jenkins job definition (and s
 
      >$ ./jenkins-jobs.sh test
 
+  - [Alternative choice](https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/job/Platform-CI-MVP-Job-Builder/build) to create/update jobs in case without a terminal.
+
 1. ####Done
 
 
 ---
-Please feel free to reach [Linqing Lu](mailto:lilu@redhat.com) or open an [issue](https://github.com/RHQE/platform-ci/issues) here if any question about this MVP.
+Please feel free open an [issue](https://github.com/RHQE/platform-ci/issues) here if any question about this MVP.
 
 Thanks!
