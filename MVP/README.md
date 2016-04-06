@@ -7,6 +7,10 @@ Minimal Viable Product (MVP) is a minimized set of Jenkins job definition (and s
   - for End-to-End workflow changes (batch update) via **Template / Default YAML**
   - for create/update/scale tests (by individuals) via **Test / Job YAML**
 
+It contains only the neccessary CI elements for creating a job in stable and scalable way.
+
+So it's also expected to be a common ground for teams to start with. And contribution would be highly appreciated.
+
 ## How to create a CI job with MVP?
 
 1. ####Get MVP files
