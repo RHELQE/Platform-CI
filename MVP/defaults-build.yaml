@@ -12,7 +12,7 @@
             artifacts: '*.txt, *.xml'
             allow-empty: 'true'
         - junit:
-            results: '*.xml'
+            results: 'J:*.xml'
         - email-ext:
             recipients: ${{OWNERSHIP,var="JOB_COOWNERS_EMAILS"}}
             always: true
