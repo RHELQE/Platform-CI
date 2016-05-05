@@ -76,6 +76,13 @@ So it's also expected to be a common ground for teams to start with. And contrib
 1. ####Done
 
 
+## Other references that may help
+
+  - A quick [video demo](http://lacrosse.redhat.com/lilu/CI_MVP_1.ogv) for starting with MVP on PJM.
+
+  - If you met [SSL issue](platform-ci/issues/4), please check out this [internal doc](https://docs.engineering.redhat.com/display/CI/Jenkins+CLI+Authentication) and install necessary cert.
+  
+
 ---
 Please feel free open an [issue](https://github.com/RHQE/platform-ci/issues) here if any question about this MVP.
 
