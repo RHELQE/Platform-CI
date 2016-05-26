@@ -15,6 +15,7 @@
             results: 'J:*.xml'
         - email-ext:
             recipients: ${{OWNERSHIP,var="JOB_COOWNERS_EMAILS"}}
+            subject: $DEFAULT_SUBJECT [${{ENV,var="name"}}-${{ENV,var="version"}}-${{ENV,var="release"}}]
             always: true
             failure: false
             send-to:
