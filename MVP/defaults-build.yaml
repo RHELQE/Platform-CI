@@ -15,10 +15,9 @@
               - shell: |
                   #!/bin/bash
                   echo "Jenkins job failed or canceled - canceling any submitted Beaker jobs"
-                  BKR_JOBID=`cut -d\' -f2 $WORKSPACE/bkr_job.txt`
                   bkr job-cancel ${{BKR_JOBID}}
         - archive:
-            artifacts: '*.txt, *.xml'
+            artifacts: '*.txt, *.xml, *.properties'
             allow-empty: 'true'
         - junit:
             results: 'J:*.xml'
