@@ -15,7 +15,8 @@
             bkr job-submit $YOUR_TEST_xml | tee $WORKSPACE/bkr_job.txt
             BKR_JOBID=`cut -d\' -f2 $WORKSPACE/bkr_job.txt`
             echo BKR_JOBID=$BKR_JOBID > $WORKSPACE/job.properties
-            echo BKR_JOBID_NUM=${{BKR_JOBID//J:/}} >> $WORKSPACE/job.properties
+            BKR_JOBID_NUM=`echo ${{BKR_JOBID//J:/}}`
+            echo BKR_JOBID_NUM=${{BKR_JOBID_NUM// /+}} >> $WORKSPACE/job.properties
         - inject:
             # Saving the Beaker job IDs to file job.properties
             properties-file: $WORKSPACE/job.properties
@@ -23,7 +24,9 @@
             #!/bin/bash -x
             # Here goes the shell command to watch your Beaker jobs and format results on completion
             bkr job-watch $BKR_JOBID
-            bkr job-results --format junit-xml $BKR_JOBID > $WORKSPACE/$BKR_JOBID.xml
+            for jobid in $BKR_JOBID; do
+              bkr job-results --format junit-xml $jobid > $WORKSPACE/$jobid.xml
+            done
 
 - project:
     name: Platform-CI-MVP
