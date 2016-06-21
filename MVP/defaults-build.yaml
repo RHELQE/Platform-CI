@@ -18,6 +18,8 @@
             name: version
         - string:
             name: release
+        - string:
+            name: BUILD
     wrappers:
         - ansicolor
         - workspace-cleanup
