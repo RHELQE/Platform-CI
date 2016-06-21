@@ -25,31 +25,35 @@ So it's also expected to be a common ground for teams to start with. And contrib
 
     *Each job YAML file may contain one or more sets of job defintion, and multiple job YAML files can be saved in same folder. They work together with the template YAML to provide detailed configurations for creating/updating Jenkins jobs.*
 
-  - `project` - `name`/`component`
+  - `node`
 
-     **name** is unique for identifying your job set.
-
-     And job trigger is watching candidate brew builds for **component** by default.
-
-  - `shell`
-
-     This is THE key part of your job.
-
-     Fill in the commands you've been using for submitting tests into Beaker.
-
-     E.g. `bkr workflow-tomorrow -f $your_taskfile` or `bkr job-submit $your_test.xml`
-
-     (`bkr job-watch` and `bkr job-results` will watch the job and collect results when it finishes.)
+     By specifying this **node** parameter, you can run the `shell` commands on team/individual slave - which will be able to access team-specific test resources with keytab configured on it.
 
   - `ownership`
 
      Replace the name with actual owner of those tests.
 
-     Owner will receive Jenkins email notifications accordingly.
+     `Owner` will receive Jenkins email notifications accordingly.
 
-  - `node`
+  - `ci-trigger`
 
-     By specifying this **node** parameter, you can run the `shell` commands on team/individual slave - which will be able to access team-specific test resources with keytab configured on it.
+	 The default trigger (in the form of jms-selector) is for official brew builds.
+
+	 You can uncomment another following jms-selector to enable different trigger accordingly.
+
+  - `shell`
+
+     THE key part of your job. Fill in the commands you are using for submitting tests into Beaker.
+
+     E.g. `bkr workflow-tomorrow -f $your_taskfile` or `bkr job-submit $your_test.xml`
+
+     (`bkr job-watch` and `bkr job-results` will watch the job and collect results when it finishes.)
+
+  - `name`/`component`
+
+     **name** is unique for identifying your job set.
+
+     And job trigger is watching candidate brew builds for **component** by default.
 
 1. ####Create Jenkins job
 
