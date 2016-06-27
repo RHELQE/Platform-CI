@@ -41,7 +41,7 @@
             results: 'J:*.xml'
         - email-ext:
             recipients: ${{OWNERSHIP,var="JOB_COOWNERS_EMAILS"}}
-            subject: $DEFAULT_SUBJECT [${{ENV,var="name"}}-${{ENV,var="version"}}-${{ENV,var="release"}}] (${{TEST_COUNTS,var="fail"}}/${{TEST_COUNTS}})
+            subject: $DEFAULT_SUBJECT [${{ENV,var="BUILD"}}] (${{TEST_COUNTS,var="fail"}}/${{TEST_COUNTS}})
             body: |
                 $DEFAULT_CONTENT
                 Beaker job at https://beaker.engineering.redhat.com/matrix/?job_ids=${{ENV,var="BKR_JOBID_NUM"}}

@@ -24,11 +24,13 @@
             # Here goes your shell commands for submitting beaker job here, and save the job ID into env var BKR_JOBID. E.g:
             bkr job-submit $YOUR_TEST_xml | tee $WORKSPACE/bkr_job.txt
             BKR_JOBID=`cut -d\' -f2 $WORKSPACE/bkr_job.txt`
+
+            # Saving the Beaker job IDs to file job.properties
             echo BKR_JOBID=$BKR_JOBID > $WORKSPACE/job.properties
             BKR_JOBID_NUM=`echo ${{BKR_JOBID//J:/}}`
             echo BKR_JOBID_NUM=${{BKR_JOBID_NUM// /+}} >> $WORKSPACE/job.properties
+            echo BUILD=${{BUILD:-$name-$version-$release}} >> $WORKSPACE/job.properties
         - inject:
-            # Saving the Beaker job IDs to file job.properties
             properties-file: $WORKSPACE/job.properties
         - shell: |
             #!/bin/bash -x
