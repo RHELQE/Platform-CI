@@ -13,9 +13,6 @@
             # Job trigger for only scratch builds in brew
             #jms-selector: "name = '{component}' AND CI_TYPE = 'brew-taskstatechange' AND scratch = true"
 
-            # Job trigger for all builds in brew (use with caution)
-            #jms-selector: "name = '{component}' AND CI_TYPE = 'brew-taskstatechange'"
-
             # Job trigger for stable compose that passed RTT validation
             #jms-selector: "CI_NAME='rtt-accepted-publisher'"
     builders:
