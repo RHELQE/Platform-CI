@@ -180,7 +180,7 @@ class PlatformJenkinsJavaCLI(PlatformJenkins):
                 exists already, or there was some communication error.
         """
         call = subprocess.Popen(self.cli + [PlatformJenkinsJavaCLI.CREATE_JOB, job.name], stdin=subprocess.PIPE)
-        out, err = call.communicate(input=platform_ci.jjb.get_job_as_xml(job, self.template_dir))
+        out, err = call.communicate(input=platform_ci.jjb.get_job_as_xml(job, self.template_dir, self.url))
         call.wait()
         if call.returncode != 0:
             logging.info(out)
@@ -195,7 +195,7 @@ class PlatformJenkinsJavaCLI(PlatformJenkins):
                 does not exist, or there was some communication error.
         """
         call = subprocess.Popen(self.cli + [PlatformJenkinsJavaCLI.UPDATE_JOB, job.name], stdin=subprocess.PIPE)
-        call.communicate(input=platform_ci.jjb.get_job_as_xml(job, self.template_dir))
+        call.communicate(input=platform_ci.jjb.get_job_as_xml(job, self.template_dir, self.url))
         call.wait()
         if call.returncode != 0:
             raise PlatformJenkinsException("Updating job failed: " + job.name)
