@@ -26,25 +26,16 @@
         - timestamps
         - build-name:
             name: ${{ENV,var="name"}}-${{ENV,var="version"}}-${{ENV,var="release"}}
+
+- publisher:
+    name: default-email
     publishers:
-        - postbuildscript:
-            script-only-if-succeeded: False
-            script-only-if-failed: True
-            builders:
-                - shell: |
-                    echo "Jenkins job failed or canceled - canceling any submitted Beaker jobs"
-                    bkr job-cancel ${{BKR_JOBID}}
-        - archive:
-            artifacts: '*.txt, *.xml, *.properties'
-            allow-empty: 'true'
-        - junit:
-            results: 'J:*.xml'
         - email-ext:
             recipients: ${{OWNERSHIP,var="JOB_COOWNERS_EMAILS"}}
             subject: $DEFAULT_SUBJECT [${{ENV,var="BUILD"}}] (${{TEST_COUNTS,var="fail"}}/${{TEST_COUNTS}})
             body: |
                 $DEFAULT_CONTENT
-                Beaker job at https://beaker.engineering.redhat.com/matrix/?job_ids=${{ENV,var="BKR_JOBID_NUM"}}
+                {content}
             always: true
             failure: false
             send-to:
