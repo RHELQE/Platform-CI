@@ -1,0 +1,68 @@
+- job-template:
+    name: '{component}-{name}'
+    defaults: defaults-build
+    #node: 'jslave-of-your-own'
+    properties:
+        - ownership:
+            owner: your_ID
+    triggers:
+        - ci-trigger:
+            # Job trigger for only official builds in brew
+            jms-selector: "name = '{component}' AND CI_TYPE = 'brew-tag' AND tag LIKE '%-candidate'"
+
+            # Job trigger for only scratch builds in brew
+            #jms-selector: "name = '{component}' AND CI_TYPE = 'brew-taskstatechange' AND scratch = true"
+
+            # Job trigger for stable compose that passed RTT validation
+            #jms-selector: "CI_NAME='rtt-accepted-publisher'"
+    scm:
+        - ci-ops-central
+    builders:
+#        - shell: |
+            # get project_defaults.json
+            # get resource.json
+            # get job.xml for restraint
+            # get ssh_keyfile
+        - ci-ops-central-provision:
+            project-defaults: project_defaults
+            topology: resource
+            ssh_keyfile: ssh_keyfile
+        - restraint-install:
+            ssh_keyfile: ssh_keyfile
+        - shell: |
+            #!/bin/bash -x
+            # Run restraint on one system, for multihost testing EXISTING_NODES has to be split
+            # and restraint has to be run with more --host parameters
+            restraint --verbose --host 1=$EXISTING_NODES --job job.xml
+            RC=$?
+            if [ $RC -ne 0 ] && [ $RC -ne 10 ]; then
+                echo "Restraint failed"
+                exit 1
+            fi
+            xsltproc /usr/share/restraint/client/job2junit.xml job.01/job.xml > result.xml
+        - ci-ops-central-teardown:
+            project-defaults: project_defaults
+            topology: resource
+            ssh_keyfile: ssh_keyfile
+    publishers:
+        - postbuildscript:
+            script-only-if-succeeded: False
+            script-only-if-failed: True
+            builders:
+                - ci-ops-central-teardown: 
+                    project-defaults: project_defaults
+                    topology: resource
+                    ssh_keyfile: ssh_keyfile
+        - archive:
+            artifacts: '*.txt, *.xml, *.properties, job.*/**'
+            allow-empty: 'true'
+        - junit:
+            results: 'result.xml'
+        - default-email:
+            content: Results at ${{ENV,var="BUILD_URL"}}/artifact
+
+- project:
+    name: Platform-CI-MVP
+    component: sample
+    jobs:
+      - '{component}-{name}'

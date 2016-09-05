@@ -1,0 +1,62 @@
+# Macros for using ci-ops-central repo - https://ci-ops-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/job/ci-ops-central-documentation/lastSuccessfulBuild/artifact/ci-ops-central/docs/build/html/index.html
+
+# repositories used by provisioner
+- scm:
+    name: ci-ops-central
+    scm:
+        - git:
+            url: 'http://git.app.eng.bos.redhat.com/git/ci-ops-central.git'
+            branches:
+                - origin/master
+            basedir: ci-ops-central
+        - git:
+            url: 'http://git.app.eng.bos.redhat.com/git/job-runner.git'
+            branches:
+                - origin/master
+            basedir: job-runner
+
+# provision resource from ci-osp
+# required parameters:
+#   ssh_keyfile
+#   topology
+#   project-defaults
+- builder:
+    name: ci-ops-central-provision
+    builders:
+        - shell: |
+            ci-ops-central/bootstrap/provision_resources.sh --workspace=`pwd` --site=ci-osp --project_defaults={project-defaults} --topology={topology} --ssh_keyfile={ssh_keyfile}
+        - inject:
+            properties-file: RESOURCES.txt
+
+# teardown previosly created resource:
+# required parameters:
+#   ssh_keyfile
+#   topology
+#   project-defaults
+- builder:
+    name: ci-ops-central-teardown
+    builders:
+        - shell: |
+            ci-ops-central/bootstrap/teardown_resources.sh --workspace=`pwd` --site=ci-osp --project_defaults={project-defaults} --topology={topology}
+
+
+# install restraint on system provisioned by ci-ops-central-provision
+# required parameters:
+#   ssh_keyfile
+- builder:
+    name: ci-ops-central-restraint-install
+    builders:
+        - shell: |
+            cat <<EOF > install_restraint.yaml
+            - hosts: testsystems
+              tasks:
+                - get_url: url=https://bpeck.fedorapeople.org/restraint/el{{{{ansible_distribution_major_version}}}}.repo dest=/etc/yum.repos.d/restraint.repo
+                - yum: name={{{{item}}}}
+                  with_items:
+                    - restraint
+                    - restraint-rhts
+                    - staf
+                - service: name=restraintd enabled=true state=started
+            EOF
+            chmod 0600 {ssh_keyfile}
+            ansible-playbook -i ansible_inventory.txt --private-key={ssh_keyfile} install_restraint.yaml
