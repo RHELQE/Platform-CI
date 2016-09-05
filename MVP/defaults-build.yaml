@@ -39,12 +39,18 @@
             allow-empty: 'true'
         - junit:
             results: 'J:*.xml'
+        - default-email:
+            content: Beaker job at https://beaker.engineering.redhat.com/matrix/?job_ids=${{ENV,var="BKR_JOBID_NUM"}}
+
+- publisher:
+    name: default-email
+    publishers:
         - email-ext:
             recipients: ${{OWNERSHIP,var="JOB_COOWNERS_EMAILS"}}
             subject: $DEFAULT_SUBJECT [${{ENV,var="BUILD"}}] (${{TEST_COUNTS,var="fail"}}/${{TEST_COUNTS}})
             body: |
                 $DEFAULT_CONTENT
-                Beaker job at https://beaker.engineering.redhat.com/matrix/?job_ids=${{ENV,var="BKR_JOBID_NUM"}}
+                {content}
             always: true
             failure: false
             send-to:
