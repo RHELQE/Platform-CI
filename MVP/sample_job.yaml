@@ -36,6 +36,21 @@
             for jobid in $BKR_JOBID; do
               bkr job-results --format junit-xml $jobid > $WORKSPACE/$jobid.xml
             done
+    publishers:
+        - postbuildscript:
+            script-only-if-succeeded: False
+            script-only-if-failed: True
+            builders:
+                - shell: |
+                    echo "Jenkins job failed or canceled - canceling any submitted Beaker jobs"
+                    bkr job-cancel ${{BKR_JOBID}}
+        - archive:
+            artifacts: '*.txt, *.xml, *.properties'
+            allow-empty: 'true'
+        - junit:
+            results: 'J:*.xml'
+        - default-email:
+            content: Beaker job at https://beaker.engineering.redhat.com/matrix/?job_ids=${{ENV,var="BKR_JOBID_NUM"}}
 
 - project:
     name: Platform-CI-MVP
