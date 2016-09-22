@@ -25,7 +25,7 @@
             # Saving the Beaker job IDs to file job.properties
             echo BKR_JOBID=$BKR_JOBID > $WORKSPACE/job.properties
             BKR_JOBID_NUM=`echo ${{BKR_JOBID//J:/}}`
-            echo BKR_JOBID_NUM=${{BKR_JOBID_NUM// /+}} >> $WORKSPACE/job.properties
+            echo JOB_DETAIL="https://beaker.engineering.redhat.com/matrix/?job_ids=${{BKR_JOBID_NUM// /+}}" >> $WORKSPACE/job.properties
             echo BUILD=${{BUILD:-$name-$version-$release}} >> $WORKSPACE/job.properties
         - inject:
             properties-file: $WORKSPACE/job.properties
