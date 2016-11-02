@@ -1,0 +1,88 @@
+# This file shows what you can add to your jjb to
+# have it publish results out on the message bus.
+# This is not a complete JJB.  It shows what you
+# can add to be published in the build step. You
+# can decide to change publish whatever you would like.
+# This is currently set up to work with the ci listener
+# from this same directory.  Essentially, it shows how
+# to manually determine the variables of interest, then
+# publish them on the message bus using the Red Hat
+# CI jenkins plugin
+
+    builders:
+     - shell: |
+        #!/bin/bash
+
+        CREATE_TIME=$(date --utc +%FT%TZ)
+        .
+        .
+        <execution of job>
+        .
+        .
+        BKR_TESTS_EXEC=0
+        BKR_TESTS_FAILED=0
+        XUNIT_LINKS=''
+        # convert all recipeSets into Junit results (do not include failed installs)
+        for recipeSet in $(cat $WORKSPACE/recipeSets.txt); do
+            bkr job-results $recipeSet | xsltproc ./kernel/jenkins/helpers/recipeSet2junit.xml - > $WORKSPACE/${{recipeSet}}_xUnit.xml
+            BKR_TESTS_EXEC=$((BKR_TESTS_EXEC+$(cat $WORKSPACE/${{recipeSet}}_xUnit.xml | grep 'failures=' | cut -d "=" -f4 | cut -d '"' -f2)))
+            BKR_TESTS_FAILED=$((BKR_TESTS_FAILED+$(cat $WORKSPACE/${{recipeSet}}_xUnit.xml | grep 'failures=' | cut -d "=" -f5 | cut -d '"' -f2)))
+            XUNIT_LINKS="$XUNIT_LINKS $JOB_URL/$BUILD_NUMBER/artifact/${{recipeSet}}_xUnit.xml"
+        XUNIT_LINKS=$(echo "$XUNIT_LINKS" | tail -c +2)
+        done
+        ARCH=''
+        for myArch in $(bkr job-results $JOBID | xsltproc ./kernel/jenkins/helpers/job2metric.xsl - 2>&1 >/dev/null | cut -d ':' -f3 | sed -e 's/^[ \t]*//' | sort | uniq) ; do
+            ARCH="$ARCH $myArch"
+        done
+        ARCH=${{ARCH:1:256}}
+        TESTS=('[{{"executor": "beaker", "arch": "'"$ARCH"'", "executed": "'$BKR_TESTS_EXEC'", "failed": "'$BKR_TESTS_FAILED'"}}]')
+        CI_TIER=0
+        if [[ -z $job_group ]] ; then OWNER=$job_group ; else OWNER=$owner ; fi
+        if [[ "$scratch" = true ]] ; then BUILD=scratch ; else BUILD=official ; fi
+        BASE_DISTRO=''
+        DISTROS=$(bkr job-results $JOBID | xsltproc ./kernel/jenkins/helpers/job2metric.xsl - 2>&1 >/dev/null | cut -d ':' -f2 | sed -e 's/^[ \t]*//' | cut -d " " -f1 | sort | uniq)
+        if [[ $(echo $DISTROS | wc -l) -eq 1 ]]; then
+              BASE_DISTRO=$DISTROS
+        else
+              for myDistro in $(echo $DISTROS) ; do
+                   BASE_DISTRO="$BASE_DISTRO $myDistro"
+              done
+        fi
+        COMPLETION_TIME=$(date --utc +%FT%TZ)
+        echo "CREATE_TIME=$CREATE_TIME" >> $WORKSPACE/CI_NOTIFIER_VARS.txt
+        echo "TESTS=$TESTS" >> $WORKSPACE/CI_NOTIFIER_VARS.txt
+        echo "CI_TIER=$CI_TIER" >> $WORKSPACE/CI_NOTIFIER_VARS.txt
+        echo "OWNER=$OWNER" >> $WORKSPACE/CI_NOTIFIER_VARS.txt
+        echo "BUILD=$BUILD" >> $WORKSPACE/CI_NOTIFIER_VARS.txt
+        echo "BASE_DISTRO=$BASE_DISTRO" >> $WORKSPACE/CI_NOTIFIER_VARS.txt
+        echo "COMPLETION_TIME=$COMPLETION_TIME" >> $WORKSPACE/CI_NOTIFIER_VARS.txt
+        echo "XUNIT_LINKS=$XUNIT_LINKS" >> $WORKSPACE/CI_NOTIFIER_VARS.txt
+
+     - inject:
+         properties-file: $WORKSPACE/CI_NOTIFIER_VARS.txt
+
+     .
+     .
+     <whatever else your jjb needs>
+     .
+     .
+    publishers:
+      - ci-publisher:
+          message-type: 'Tier0TestingDone'
+          message-properties: |
+            CI_TYPE=ci-metricsdata
+          message-content: |
+            {{
+                "create_time": "$CREATE_TIME",
+                "tests": $TESTS,
+                "CI_tier": "$CI_TIER",
+                "owner": "$OWNER",
+                "build_type": "$BUILD",
+                "base_distro": "$BASE_DISTRO",
+                "completion_time": "$COMPLETION_TIME",
+                "component": "$name-$version-$release",
+                "job_link_back": "$JOB_URL",
+                "brew_task_id": "$id",
+                "job_names": "$JOB_NAME",
+                "xunit_links": "$XUNIT_LINKS"
+            }}
