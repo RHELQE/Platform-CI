@@ -81,7 +81,7 @@ class JJB(object):
         to_execute = ["jenkins-jobs", "--conf", self.config_file, "test", self.workdir, job.name]
 
         try:
-            jjb_xml = subprocess.Popen(to_execute, stderr=subprocess.PIPE)
+            jjb_xml = subprocess.Popen(to_execute, stderr=subprocess.PIPE).communicate()[0]
         except subprocess.CalledProcessError:
             jjb_user = os.environ["JOB_BUILDER_USER"]
             jjb_password = os.environ["JOB_BUILDER_PASS"]
@@ -89,6 +89,6 @@ class JJB(object):
             with open(self.config_file, "a") as config_file_handler:
                 config_file_handler.write("\nuser={0}\npassword={1}".format(jjb_user, jjb_password))
 
-            jjb_xml = subprocess.Popen(to_execute, stderr=subprocess.PIPE)
+            jjb_xml = subprocess.Popen(to_execute, stderr=subprocess.PIPE).communicate()[0]
 
         return jjb_xml
