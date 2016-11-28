@@ -217,15 +217,20 @@
 
             # Case 2 (job metrics)
             elif os.environ["CI_TYPE"] == 'ci-metricsdata':
-                 if 'build_type' in parsed_json.keys():
-                    # Dont store logs for scratch builds
-                    if parsed_json['build_type'] == 'scratch':
-                         print("scratch is true. Exiting..")
-                         sys.exit()
 
                  # ISO8601 regex.  We use this for metrics timestamps
                  iso8601 = re.compile(r'(\d{{4}})-(0[1-9]|1[0-2])-(0[1-9]|1[0-9]|2[0-9]|3[01])(|[tT\s])(0[0-9]|1[0-9]|2[0-3]):(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]):(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])Z')
                  expected_Keys=['component', 'trigger', 'tests', 'job_link_back', 'base_distro', 'compose_id', 'brew_task_id', 'create_time', 'completion_time', 'CI_infra_failure', 'CI_infra_failure_desc', 'job_names', 'CI_tier', 'build_type', 'owner', 'content-length', 'destination', 'expires', 'xunit_links']
+
+                 # Get the docid now so we can look up old logs
+                 if ('component' in parsed_json.keys()) and ('brew_task_id' in parsed_json.keys()):
+                      docid = parsed_json['component']+'-'+parsed_json['brew_task_id']
+                 else:
+                      print("Could not find component/task_id in metrics data.  Exiting...")
+                      sys.exit()
+
+                 old_log_json = subprocess.Popen(['curl', '--ipv4', '-XGET', '{server}:9200/{index}/log/'+docid+'?pretty'], stdout=subprocess.PIPE).communicate()[0]
+                 old_log = json.loads(old_log_json)
 
                  # Check to see if we're getting the keys we expect
                  # If we have unexpected keys, we know to add it and
@@ -247,24 +252,133 @@
                            if (value != 'manual') and (value != 'git') and (value != 'commit') and (value != 'git push') and (value != 'rhpkg build') and (value != 'brew build'):
                                 value = 'null'
                            parsed_json[key] = value
+                      elif key == 'tests' and '_source' in old_log.keys():
+                           for i, tester in enumerate(parsed_json['tests']):
+                                if tester['executor'] == 'beaker':
+                                     # Find out how many jobs have
+                                     # already been reported by old_log
+                                     JOBS_REPORTED = 1
+                                     JOBS_LIST = []
+                                     if 'job_names' in parsed_json.keys():
+                                          JOBS_LIST.append(parsed_json['job_names'])
+                                     else:
+                                          # Dummy name to be replaced later
+                                          JOBS_LIST.append("00000")
+                                     for key in old_log['_source'].keys():
+                                          if key.startswith( 'job_names' ):
+                                               JOBS_REPORTED = JOBS_REPORTED + 1
+                                               JOBS_LIST.append(old_log['_source'][key])
+                                               JOBS_LIST.sort()
+                                     # Have to be careful about not reusing values here, so 
+                                     # rewrite dummy job with appropriate number of preexisting jobs
+                                     if 'job_names' not in parsed_json.keys():
+                                          JOBS_LIST[0] = "DUMMY_" + str(JOBS_REPORTED)
+                                     for index in range (0,JOBS_REPORTED):
+                                          JOB_TO_ADD=JOBS_LIST[index]
+                                          if index == 0:
+                                               # This job is the new one, tester is incoming metrics data
+                                               parsed_json['beaker_job_1'] = JOB_TO_ADD
+                                               if not tester['executed'].isdigit():
+                                                    tester['executed'] = '-1'
+                                               parsed_json['beaker_tests_exec_1'] = tester['executed']
+                                               parsed_json['beaker_arch_1'] = tester['arch']
+                                               if not tester['failed'].isdigit():
+                                                    tester['failed'] = '-1'
+                                               parsed_json['beaker_tests_failed_1'] = tester['failed']
+                                          else:
+                                               # This job is from old log, so was already stored
+                                               myval = 0
+                                               # Get index of job from old log
+                                               # This only supports up to 9 preexisting jobs
+                                               # as key[-1:] only gets the last integer
+                                               for key in old_log['_source'].keys():
+                                                    if key.startswith( 'beaker_job' ):
+                                                         if old_log['_source'][key] == JOB_TO_ADD:
+                                                              myval = key[-1:]
+                                               if myval == 0:
+                                                    print("How did we not find the number associated with this key? %s" % key)
+                                               else:
+                                                    parsed_json['beaker_job_'+str(index+1)] = old_log['_source']['beaker_job_'+str(myval)]
+                                                    parsed_json['beaker_arch_'+str(index+1)] = old_log['_source']['beaker_arch_'+str(myval)]
+                                                    parsed_json['beaker_tests_exec_'+str(index+1)] = old_log['_source']['beaker_tests_exec_'+str(myval)]
+                                                    parsed_json['beaker_tests_failed_'+str(index+1)] = old_log['_source']['beaker_tests_failed_'+str(myval)]
+                                elif tester['executor'] == 'CI-OSP':
+                                     # Find out how many jobs have
+                                     # already been reported by old_log
+                                     JOBS_REPORTED = 1
+                                     JOBS_LIST = []
+                                     if 'job_names' in parsed_json.keys():
+                                          JOBS_LIST.append(parsed_json['job_names'])
+                                     else:
+                                          # Dummy name to be replaced later
+                                          JOBS_LIST.append("00000")
+                                     for key in old_log['_source'].keys():
+                                          if key.startswith( 'job_names' ):
+                                               JOBS_REPORTED = JOBS_REPORTED + 1
+                                               JOBS_LIST.append(old_log['_source'][key])
+                                               JOBS_LIST.sort()
+                                     # Have to be careful about not reusing values here, so 
+                                     # rewrite dummy job with appropriate number of preexisting jobs
+                                     if 'job_names' not in parsed_json.keys():
+                                          JOBS_LIST[0] = "DUMMY_" + str(JOBS_REPORTED)
+                                     for index in range (0,JOBS_REPORTED):
+                                          JOB_TO_ADD=JOB_LIST[index]
+                                          if index == 0:
+                                               # This job is the new one, tester is incoming metrics data
+                                               parsed_json['ciosp_job_1'] = JOB_TO_ADD
+                                               if not tester['executed'].isdigit():
+                                                    tester['executed'] = '-1'
+                                               parsed_json['ciosp_tests_exec_1'] = tester['executed']
+                                               if not tester['failed'].isdigit():
+                                                    tester['failed'] = '-1'
+                                               parsed_json['ciosp_tests_failed_1'] = tester['failed']
+                                               parsed_json['ciosp_arch_1'] = tester['arch']
+                                          else:
+                                               # This job is from old log, so was already stored
+                                               myval = 0
+                                               # Get index of job from old log
+                                               # This only supports up to 9 preexisting jobs
+                                               # as key[-1:] only gets the last integer
+                                               for key in old_log['_source'].keys():
+                                                    if key.startswith( 'ciosp_job' ):
+                                                         if old_log['_source'][key] == JOB_TO_ADD:
+                                                              myval = key[-1:]
+                                               if myval == 0:
+                                                    print("How did we not find the number associated with this key? %s" % key)
+                                               else:
+                                                    parsed_json['ciosp_job_'+str(index+1)] = old_log['_source']['ciosp_job_'+str(myval)]
+                                                    parsed_json['ciosp_arch_'+str(index+1)] = old_log['_source']['ciosp_arch_'+str(myval)]
+                                                    parsed_json['ciosp_tests_exec_'+str(index+1)] = old_log['_source']['ciosp_tests_exec_'+str(myval)]
+                                                    parsed_json['ciosp_tests_failed_'+str(index+1)] = old_log['_source']['ciosp_tests_failed_'+str(myval)]
+                                else:
+                                     print('Unsupported test executor!')
+                           del parsed_json['tests'] 
                       elif key == 'tests':
                            for i, tester in enumerate(value):
                                 if tester['executor'] == 'beaker':
-                                     parsed_json['beaker_arch'] = tester['arch']
+                                     if 'job_names' in parsed_json.keys():
+                                          parsed_json['beaker_job_1'] = parsed_json['job_names']
+                                     else:
+                                          parsed_json['beaker_job_1'] = 'DUMMY_1'
+                                     parsed_json['beaker_arch_1'] = tester['arch']
                                      if not tester['executed'].isdigit():
                                           tester['executed'] = '-1'
-                                     parsed_json['beaker_tests_exec'] = tester['executed']
+                                     parsed_json['beaker_tests_exec_1'] = tester['executed']
                                      if not tester['failed'].isdigit():
                                           tester['failed'] = '-1'
-                                     parsed_json['beaker_tests_fail'] = tester['failed']
+                                     parsed_json['beaker_tests_failed_1'] = tester['failed']
                                 elif tester['executor'] == 'CI-OSP':
-                                     parsed_json['ciosp_arch'] = tester['arch']
+                                     if 'job_names' in parsed_json.keys():
+                                          parsed_json['ciosp_job_1'] = parsed_json['job_names']
+                                     else:
+                                          parsed_json['beaker_job_1'] = 'DUMMY_1'
+                                     parsed_json['ciosp_arch_1'] = tester['arch']
                                      if not tester['executed'].isdigit():
                                           tester['executed'] = '-1'
-                                     parsed_json['ciosp_tests_exec'] = tester['executed']
+                                     parsed_json['ciosp_tests_exec_1'] = tester['executed']
                                      if not tester['failed'].isdigit():
                                           tester['failed'] = '-1'
-                                     parsed_json['ciosp_tests_fail'] = tester['failed']
+                                     parsed_json['ciosp_tests_failed_1'] = tester['failed']
                                 else:
                                      print('Unsupported test executor!')
                            del parsed_json[key]
@@ -345,8 +459,8 @@
 ## Describes the project
 - project:
     name: ci-metrics-listener
-    server: ELKSERVER
-    pdc_rpm_link: LINKTOPDC/RPMS
+    server: SERVER
+    pdc_rpm_link: PDC_LINK/api/v1/rpms
     index: brew-taskstatechange
     jobs:
       - ci-metricsdata-listener
