@@ -3,7 +3,7 @@
     description: |
         Managed by Jenkins Job Builder. Do not edit via web
     concurrent: false
-    node: master
+    node: 'jslave-platform'
     triggers:
         - ci-trigger:
             jms-selector: "(CI_TYPE = '{index}' AND method = 'build' AND scratch = FALSE) OR (CI_TYPE = 'ci-metricsdata')"

@@ -68,7 +68,7 @@
      .
     publishers:
       - ci-publisher:
-          message-type: 'Tier0TestingDone'
+          message-type: 'Tier1TestingDone'
           message-properties: |
             CI_TYPE=ci-metricsdata
           message-content: |
