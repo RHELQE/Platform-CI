@@ -1,0 +1,94 @@
+## This playbook sets up a basic ELK instance.  After execution,
+## you will still need to create an index on the ELK instance
+## and send logs to the ELK instance
+
+- hosts: localhost
+  remote_user: root
+  tasks:
+  - name: Install wget
+    yum: name=wget state=latest
+  - name: wget the java jdk
+    command: 'wget --no-cookies --no-check-certificate --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" "http://download.oracle.com/otn-pub/java/jdk/8u73-b02/jdk-8u73-linux-x64.rpm"'
+    args:
+      chdir: /root
+  - name: yum localinstall the java jdk
+    yum: name=/root/jdk-8u73-linux-x64.rpm state=present
+  - name: Remove the java jdk
+    file: path=/root/jdk-8u73-linux-x64.rpm state=absent
+  - name: Insert elk repo
+    blockinfile:
+      dest: /etc/yum.repos.d/elk.repo
+      create: yes
+      block: |
+        [logstash-2.3]
+        name=Logstash repository for 2.3.x packages
+        baseurl=https://packages.elastic.co/logstash/2.3/centos
+        gpgcheck=1
+        gpgkey=https://packages.elastic.co/GPG-KEY-elasticsearch
+        enabled=1
+        [kibana-4.5]
+        name=Kibana repository for 4.5.x packages
+        baseurl=http://packages.elastic.co/kibana/4.5/centos
+        gpgcheck=1
+        gpgkey=http://packages.elastic.co/GPG-KEY-elasticsearch
+        enabled=1
+        [elasticsearch-2.x]
+        name=Elasticsearch repository for 2.x packages
+        baseurl=http://packages.elastic.co/elasticsearch/2.x/centos
+        gpgcheck=1
+        gpgkey=http://packages.elastic.co/GPG-KEY-elasticsearch
+        enabled=1
+        [Epel]
+        name=epel
+        baseurl=http://dl.fedoraproject.org/pub/epel/7/x86_64/
+        enabled=1
+        gpgcheck=0
+  - name: Do a yum clean all
+    command: yum clean all
+  - name: Install necessary packages
+    yum: pkg={{item}} state=installed
+    with_items:
+     - logstash
+     - kibana
+     - elasticsearch
+     - httpd
+     - epel-release
+     - nginx
+     - httpd-tools
+  - name: Change elasticsearch network host
+    replace: dest=/etc/elasticsearch/elasticsearch.yml regexp='# network.host{{ ":" }} 192.168.0.1' replace=' network.host{{ ":" }} 0.0.0.0'
+  - name: Need selinux to be permissive
+    command: setenforce 0
+  - name: Change kibana server host
+    replace: dest=/opt/kibana/config/kibana.yml regexp='# server.host{{ ":" }} "0.0.0.0"' replace=' server.host{{ ":" }} "localhost"'
+  - name: Remove server chunk from nginx conf
+    shell: 'head -n33 /etc/nginx/nginx.conf > /etc/nginx/nginx.conf.tmp'
+  - name: Add final closing brace to /etc/nginx/nginx.conf.tmp
+    shell: 'echo "}" >> /etc/nginx/nginx.conf.tmp'
+  - name: Replace nginx conf with new one
+    shell: 'mv -f /etc/nginx/nginx.conf.tmp /etc/nginx/nginx.conf'
+  - name: Create new nginx server definition
+    blockinfile:
+      dest: /etc/nginx/conf.d/kibana.conf
+      create: yes
+      block: |
+        server {
+          listen 80;
+
+          server_name localhost;
+
+          location / {
+             proxy_pass http://localhost:5601;
+             proxy_http_version 1.1;
+             proxy_set_header Upgrade $http_upgrade;
+             proxy_set_header Connection 'upgrade';
+             proxy_set_header Host $host;
+             proxy_cache_bypass $http_upgrade;
+          }
+        }
+  - name: Reload daemons with systemd
+    command: systemctl daemon-reload
+  - name: Enable all the services
+    command: systemctl enable nginx.service elasticsearch.service kibana.service logstash.service
+  - name: Start the services
+    command: systemctl start nginx.service elasticsearch.service kibana.service logstash.service
