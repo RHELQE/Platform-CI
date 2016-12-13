@@ -24,16 +24,16 @@
             import numbers
             import dateutil.parser as dp
 
+            # Print the environment to console log for debugging purposes
+            for key in os.environ.keys():
+                 print "%s=%s" % (key, os.environ[key])
+
             # Extract CI_MESSAGE from message
             if "CI_MESSAGE" in os.environ:
                 message = os.environ["CI_MESSAGE"]
                 parsed_json = json.loads(message)
             else:
                 parsed_json = json.loads(sys.stdin)
-
-            # Print the environment to console log for debugging purposes
-            for key in os.environ.keys():
-                 print "%s=%s" % (key, os.environ[key])
 
             # If the index does not yet exist, put it there
             hostindex = '{server}:9200/{index}'
@@ -220,7 +220,7 @@
 
                  # ISO8601 regex.  We use this for metrics timestamps
                  iso8601 = re.compile(r'(\d{{4}})-(0[1-9]|1[0-2])-(0[1-9]|1[0-9]|2[0-9]|3[01])(|[tT\s])(0[0-9]|1[0-9]|2[0-3]):(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]):(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])Z')
-                 expected_Keys=['component', 'trigger', 'tests', 'job_link_back', 'base_distro', 'compose_id', 'brew_task_id', 'create_time', 'completion_time', 'CI_infra_failure', 'CI_infra_failure_desc', 'job_names', 'CI_tier', 'build_type', 'owner', 'content-length', 'destination', 'expires', 'xunit_links']
+                 expected_Keys=['component', 'trigger', 'tests', 'job_link_back', 'base_distro', 'compose_id', 'brew_task_id', 'create_time', 'completion_time', 'CI_infra_failure', 'CI_infra_failure_desc', 'job_names', 'CI_tier', 'build_type', 'owner', 'content-length', 'destination', 'expires', 'xunit_links', 'jenkins_build_url']
 
                  # Get the docid now so we can look up old logs
                  if ('component' in parsed_json.keys()) and ('brew_task_id' in parsed_json.keys()):
@@ -241,6 +241,7 @@
                       if key in expected_Keys:
                            expected_Keys.remove(key)
 
+                 # Syntax check the keys that we know how to
                  for key, value in parsed_json.items():
                       if key == 'component':
                            if parsed_json[key].count('-') < 2:
@@ -322,7 +323,7 @@
                                      if 'job_names' not in parsed_json.keys():
                                           JOBS_LIST[0] = "DUMMY_" + str(JOBS_REPORTED)
                                      for index in range (0,JOBS_REPORTED):
-                                          JOB_TO_ADD=JOB_LIST[index]
+                                          JOB_TO_ADD=JOBS_LIST[index]
                                           if index == 0:
                                                # This job is the new one, tester is incoming metrics data
                                                parsed_json['ciosp_job_1'] = JOB_TO_ADD
@@ -418,16 +419,11 @@
                       elif key == 'owner':
                            parsed_json[key] = value[:64]
 
-                 # Again we use nvr+brew_task_id as docid
-                 docid = parsed_json['nvr']+'-'+parsed_json['brew_task_id']
                  # Add field that shows CI Testing was done for kibana visualizations
                  parsed_json['CI Testing Done'] = 'true'
                  if 'timestamp' not in parsed_json.keys():
                       parsed_json['timestamp'] = (int(time.time())*1000)
 
-                 # Get the built in brew message for this NVR and append it with the CI metrics data
-                 old_log_json = subprocess.Popen(['curl', '--ipv4', '-XGET', '{server}:9200/{index}/log/'+docid+'?pretty'], stdout=subprocess.PIPE).communicate()[0]
-                 old_log = json.loads(old_log_json)
                  # If _source not in old_log, there is no old log for this nvr
                  if '_source' in old_log.keys():
                       old_log['_source'].update(parsed_json)
@@ -459,8 +455,8 @@
 ## Describes the project
 - project:
     name: ci-metrics-listener
-    server: SERVER
-    pdc_rpm_link: PDC_LINK/api/v1/rpms
+    server: LINKTO_ELK_SERVER
+    pdc_rpm_link: LINKTO_PDC/api/v1/rpms
     index: brew-taskstatechange
     jobs:
       - ci-metricsdata-listener
