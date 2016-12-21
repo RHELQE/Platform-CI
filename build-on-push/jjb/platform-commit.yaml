@@ -68,9 +68,6 @@
             job-commit-dispatcher.sh "{component}" "$GIT_BRANCH" "{github-user}" "{platform-ci-branch}"
     wrappers:
         - default-ci-workflow-wrappers
-        - inject-passwords:
-            global: true
-            mask-password-params: true
 
 - job-template:
     name: 'ci-{component}-dispatcher-commit'
