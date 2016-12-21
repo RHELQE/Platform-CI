@@ -82,13 +82,20 @@ class JJB(object):
 
         jjb_xml = subprocess.Popen(to_execute, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
 
-        if not jjb_xml:
+        if not jjb_xml and os.getenv("JOB_BUILDER_PASS", None):
             jjb_user = os.environ["JOB_BUILDER_USER"]
             jjb_password = os.environ["JOB_BUILDER_PASS"]
 
             with open(self.config_file, "a") as config_file_handler:
                 config_file_handler.write("\nuser={0}\npassword={1}".format(jjb_user, jjb_password))
 
+            jjb_xml = subprocess.Popen(to_execute, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
+
+        if not jjb_xml:
+            # This is for case job doesn't have credentials and update fail with config containing just url.
+            # It should pass without any config at all
+            # Only jobs, which really need credentials, have access to them.
+            to_execute = ["jenkins-jobs", "test", self.workdir, job.name]
             jjb_xml = subprocess.Popen(to_execute, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
 
         return jjb_xml
