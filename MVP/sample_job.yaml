@@ -5,37 +5,36 @@
     properties:
         - ownership:
             owner: your_ID
+            co-owners:
+                - teammate1_ID
+                - teammate2_ID
     triggers:
         - ci-trigger:
-            # Job trigger for only official builds in brew
+            # Sample job trigger for official Brew builds
+            # Build NVR in $name $version $release
             jms-selector: "name = '{component}' AND CI_TYPE = 'brew-tag' AND tag LIKE '%-candidate'"
 
-            # Job trigger for only scratch builds in brew
+            # Sample job trigger for scratch Brew builds
             #jms-selector: "name = '{component}' AND CI_TYPE = 'brew-taskstatechange' AND scratch = true"
 
-            # Job trigger for stable compose that passed RTT validation
+            # Sample job trigger for RTT_Accepted compose - other parameters may turn different in this case
+            # Compose ID in $BUILD
             #jms-selector: "CI_NAME='rtt-accepted-publisher'"
     builders:
         - shell: |
             #!/bin/bash -x
+
             # Here goes your shell commands for submitting beaker job here, and save the job ID into env var BKR_JOBID. E.g:
             bkr job-submit $YOUR_TEST_xml | tee $WORKSPACE/bkr_job.txt
             BKR_JOBID=`cut -d\' -f2 $WORKSPACE/bkr_job.txt`
 
-            # Saving the Beaker job IDs to file job.properties
             echo BKR_JOBID=$BKR_JOBID > $WORKSPACE/job.properties
-            BKR_JOBID_NUM=`echo ${{BKR_JOBID//J:/}}`
-            echo JOB_DETAIL="https://beaker.engineering.redhat.com/matrix/?job_ids=${{BKR_JOBID_NUM// /+}}" >> $WORKSPACE/job.properties
-            echo BUILD=${{BUILD:-$name-$version-$release}} >> $WORKSPACE/job.properties
         - inject:
             properties-file: $WORKSPACE/job.properties
         - shell: |
             #!/bin/bash -x
-            # Here goes the shell command to watch your Beaker jobs and format results on completion
             bkr job-watch $BKR_JOBID
-            for jobid in $BKR_JOBID; do
-              bkr job-results --format junit-xml $jobid > $WORKSPACE/$jobid.xml
-            done
+            echo $?
 
 - project:
     name: Platform-CI-MVP
