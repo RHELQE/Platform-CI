@@ -69,7 +69,7 @@
                   "create_time": "",
                   "tests": $TESTS,
                   "CI_tier": "1",
-                  "owner_mtr": "$job_owner",
+                  "owner": "$job_owner",
                   "build_type": "",
                   "base_distro": "",
                   "completion_time": "",
