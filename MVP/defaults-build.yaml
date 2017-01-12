@@ -26,6 +26,8 @@
         - timestamps
         - build-name:
             name: ${{ENV,var="name"}}-${{ENV,var="version"}}-${{ENV,var="release"}}
+        - inject:
+            script-content: echo "create_time=$(date --utc +%FT%TZ)" >> $WORKSPACE/job.properties
     publishers:
         - postbuildscript:
             script-only-if-succeeded: False
@@ -66,7 +68,7 @@
                 CI_TYPE=ci-metricsdata
             message-content: |
                 {{
-                  "create_time": "",
+                  "create_time": "$create_time",
                   "tests": $TESTS,
                   "CI_tier": "1",
                   "owner": "$job_owner",
