@@ -6,15 +6,21 @@
   remote_user: root
   tasks:
   - name: Install wget
-    yum: name=wget state=latest
+    yum:
+      name: wget
+      state: latest
   - name: wget the java jdk
-    command: 'wget --no-cookies --no-check-certificate --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" "http://download.oracle.com/otn-pub/java/jdk/8u73-b02/jdk-8u73-linux-x64.rpm"'
+    shell: 'wget --no-cookies --no-check-certificate --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" "http://download.oracle.com/otn-pub/java/jdk/8u73-b02/jdk-8u73-linux-x64.rpm"'
     args:
       chdir: /root
   - name: yum localinstall the java jdk
-    yum: name=/root/jdk-8u73-linux-x64.rpm state=present
+    yum:
+      name: /root/jdk-8u73-linux-x64.rpm
+      state: present
   - name: Remove the java jdk
-    file: path=/root/jdk-8u73-linux-x64.rpm state=absent
+    file:
+      path: /root/jdk-8u73-linux-x64.rpm
+      state: absent
   - name: Insert elk repo
     blockinfile:
       dest: /etc/yum.repos.d/elk.repo
@@ -44,9 +50,11 @@
         enabled=1
         gpgcheck=0
   - name: Do a yum clean all
-    command: yum clean all
+    shell: yum clean all
   - name: Install necessary packages
-    yum: pkg={{item}} state=installed
+    yum:
+      pkg: "{{item}}"
+      state: installed
     with_items:
      - logstash
      - kibana
@@ -56,17 +64,37 @@
      - nginx
      - httpd-tools
   - name: Change elasticsearch network host
-    replace: dest=/etc/elasticsearch/elasticsearch.yml regexp='# network.host{{ ":" }} 192.168.0.1' replace=' network.host{{ ":" }} 0.0.0.0'
+    replace:
+      dest: /etc/elasticsearch/elasticsearch.yml
+      regexp: '# network.host{{ ":" }} 192.168.0.1'
+      replace: ' network.host{{ ":" }} 0.0.0.0'
   - name: Need selinux to be permissive
-    command: setenforce 0
+    shell: setenforce 0
   - name: Change kibana server host
-    replace: dest=/opt/kibana/config/kibana.yml regexp='# server.host{{ ":" }} "0.0.0.0"' replace=' server.host{{ ":" }} "localhost"'
+    replace:
+      dest: /opt/kibana/config/kibana.yml
+      regexp: '# server.host{{ ":" }} "0.0.0.0"'
+      replace: ' server.host{{ ":" }} "localhost"'
   - name: Remove server chunk from nginx conf
-    shell: 'head -n33 /etc/nginx/nginx.conf > /etc/nginx/nginx.conf.tmp'
-  - name: Add final closing brace to /etc/nginx/nginx.conf.tmp
-    shell: 'echo "}" >> /etc/nginx/nginx.conf.tmp'
-  - name: Replace nginx conf with new one
-    shell: 'mv -f /etc/nginx/nginx.conf.tmp /etc/nginx/nginx.conf'
+    lineinfile:
+      dest: /etc/nginx/nginx.conf
+      state: absent
+      regexp: "{{ item.regexp }}"
+      backup: yes
+    with_items:
+      - { regexp: '   server {' }
+      - { regexp: '       listen       80 default_server;' }
+      - { regexp: '       listen       \[::\]:80 default_server;' }
+      - { regexp: '       server_name  _;' }
+      - { regexp: '       root         /usr/share/nginx/html;' }
+      - { regexp: '       include /etc/nginx/default.d/\*.conf;' }
+      - { regexp: '       location / {' }
+      - { regexp: '       }' }
+      - { regexp: '       error_page 404 /404.html' }
+      - { regexp: '           location = /40x.html {' }
+      - { regexp: '       error_page 500 502 503 504 /50x.html;' }
+      - { regexp: '           location = /50x.html' }
+      - { regexp: '   }' }
   - name: Create new nginx server definition
     blockinfile:
       dest: /etc/nginx/conf.d/kibana.conf
@@ -87,8 +115,8 @@
           }
         }
   - name: Reload daemons with systemd
-    command: systemctl daemon-reload
+    shell: systemctl daemon-reload
   - name: Enable all the services
-    command: systemctl enable nginx.service elasticsearch.service kibana.service logstash.service
+    shell: systemctl enable nginx.service elasticsearch.service kibana.service logstash.service
   - name: Start the services
-    command: systemctl start nginx.service elasticsearch.service kibana.service logstash.service
+    shell: systemctl start nginx.service elasticsearch.service kibana.service logstash.service
