@@ -85,7 +85,7 @@ Note that the solution requires an RHEL 7 or Centos 7 system. To install an ELK 
 ELK Listener job listens on the CI message bus for messages matching this JMS selector:
 
 ```
-(CI_TYPE = '{index}' AND method = 'build' AND scratch = FALSE) OR (CI_TYPE = 'ci-metricsdata')
+(CI_TYPE = 'brew-taskstatechange' AND method = 'build' AND scratch = FALSE) OR (CI_TYPE = 'ci-metricsdata')
 
 ```
 
@@ -158,7 +158,7 @@ The possible items of the message are defined in this document [https://url.corp
                 "base_distro": "$BASE_DISTRO",
                 "completion_time": "$COMPLETION_TIME",
                 "component": "$name-$version-$release",
-                "job_link_back": "$JOB_URL",
+                "jenkins_job_url": "$JOB_URL",
                 "brew_task_id": "$id",
                 "job_names": "$JOB_NAME",
                 "xunit_links": "$XUNIT_LINKS"
