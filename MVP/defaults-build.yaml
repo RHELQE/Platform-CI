@@ -1,6 +1,6 @@
 - defaults:
     name: defaults-build
-    node: 'jslave-platform-rhel7'
+    node: 'jslave-platform'
     parameters:
         - string:
             name: id
@@ -34,17 +34,58 @@
                 - shell: |
                     echo "Jenkins job failed or canceled - canceling any submitted Beaker jobs"
                     bkr job-cancel ${{BKR_JOBID}}
+        - postbuildscript:
+            script-only-if-succeeded: False
+            builders:
+                - shell: |
+                    BKR_JOBID_NUM=`echo ${{BKR_JOBID//J:/}}`
+                    echo "BKR_JOBID_NUM=${{BKR_JOBID_NUM// /+}}" >> $WORKSPACE/job.properties
+                    BKR_TESTS_EXEC=0
+                    BKR_TESTS_FAILED=0
+                    for jobid in $BKR_JOBID; do
+                      bkr job-results --format junit-xml $jobid > $WORKSPACE/$jobid.xml
+                      for testsuite in $(grep hostname $WORKSPACE/$jobid.xml); do
+                        echo $testsuite | grep tests= && BKR_TESTS_EXEC=$((BKR_TESTS_EXEC+$(echo $testsuite | cut -d'"' -f2)))
+                        echo $testsuite | grep failures= && BKR_TESTS_FAILED=$((BKR_TESTS_FAILED+$(echo $testsuite | cut -d'"' -f2)))
+                      done
+                    done
+                    echo "BKR_TESTS_EXEC=$BKR_TESTS_EXEC" >> $WORKSPACE/job.properties
+                    echo "BKR_TESTS_FAILED=$BKR_TESTS_FAILED" >> $WORKSPACE/job.properties
+                    TESTS=('[{{"executor": "beaker", "arch": "'"$ARCH"'", "executed": "'"$BKR_TESTS_EXEC"'", "failed": "'"$BKR_TESTS_FAILED"'"}}]')
+                    echo "TESTS=$TESTS" >> $WORKSPACE/job.properties
+                - inject:
+                    properties-file: $WORKSPACE/job.properties
         - archive:
             artifacts: '*.txt, *.xml, *.properties'
             allow-empty: 'true'
         - junit:
             results: 'J:*.xml'
+        - ci-publisher:
+            message-type: 'Tier1TestingDone'
+            message-properties: |
+                CI_TYPE=ci-metricsdata
+            message-content: |
+                {{
+                  "create_time": "",
+                  "tests": $TESTS,
+                  "CI_tier": "1",
+                  "owner": "$job_owner",
+                  "build_type": "",
+                  "base_distro": "",
+                  "completion_time": "",
+                  "component": "$name-$version-$release",
+                  "jenkins_job_url": "$JOB_URL",
+                  "jenkins_build_url": "$BUILD_URL",
+                  "brew_task_id": "$task_id",
+                  "job_names": "$JOB_NAME",
+                  "xunit_links": ""
+                }}
         - email-ext:
             recipients: ${{OWNERSHIP,var="JOB_COOWNERS_EMAILS"}}
-            subject: $DEFAULT_SUBJECT [${{ENV,var="BUILD"}}] (${{TEST_COUNTS,var="fail"}}/${{TEST_COUNTS}})
+            subject: $DEFAULT_SUBJECT [${{ENV,var="name"}}-${{ENV,var="version"}}-${{ENV,var="release"}}] (${{TEST_COUNTS,var="fail"}}/${{TEST_COUNTS}})
             body: |
                 $DEFAULT_CONTENT
-                More details at ${{ENV,var="JOB_DETAIL"}}
+                Job details at https://beaker.engineering.redhat.com/matrix/?job_ids=${{ENV,var="BKR_JOBID_NUM"}}
             always: true
             failure: false
             send-to:
