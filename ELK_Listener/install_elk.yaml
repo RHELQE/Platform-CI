@@ -75,26 +75,10 @@
       dest: /opt/kibana/config/kibana.yml
       regexp: '# server.host{{ ":" }} "0.0.0.0"'
       replace: ' server.host{{ ":" }} "localhost"'
-  - name: Remove server chunk from nginx conf
-    lineinfile:
+  - name: Put better nginx conf file in place
+    template:
       dest: /etc/nginx/nginx.conf
-      state: absent
-      regexp: "{{ item.regexp }}"
-      backup: yes
-    with_items:
-      - { regexp: '   server {' }
-      - { regexp: '       listen       80 default_server;' }
-      - { regexp: '       listen       \[::\]:80 default_server;' }
-      - { regexp: '       server_name  _;' }
-      - { regexp: '       root         /usr/share/nginx/html;' }
-      - { regexp: '       include /etc/nginx/default.d/\*.conf;' }
-      - { regexp: '       location / {' }
-      - { regexp: '       }' }
-      - { regexp: '       error_page 404 /404.html' }
-      - { regexp: '           location = /40x.html {' }
-      - { regexp: '       error_page 500 502 503 504 /50x.html;' }
-      - { regexp: '           location = /50x.html' }
-      - { regexp: '   }' }
+      src: ./nginx.template
   - name: Create new nginx server definition
     blockinfile:
       dest: /etc/nginx/conf.d/kibana.conf
