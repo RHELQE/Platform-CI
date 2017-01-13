@@ -435,8 +435,8 @@
                  # Add total time in seconds testing ran for
                  if ('create_time' in parsed_json.keys()) and ('completion_time' in parsed_json.keys()):
                       if iso8601.match(parsed_json['create_time']) and iso8601.match(parsed_json['completion_time']):
-                           time_start = time.strptime(parsed_json['create_time'], '%Y-%m-%dT%H:%M:SZ')
-                           time_end = time.strptime(parsed_json['completion_time'], '%Y-%m-%dT%H:%M:SZ')
+                           time_start = time.strptime(parsed_json['create_time'], '%Y-%m-%dT%H:%M:%SZ')
+                           time_end = time.strptime(parsed_json['completion_time'], '%Y-%m-%dT%H:%M:%SZ')
                            time_start = time.mktime(time_start)
                            time_end = time.mktime(time_end)
                            parsed_json['time_spent_seconds'] = int(time_end - time_start)
