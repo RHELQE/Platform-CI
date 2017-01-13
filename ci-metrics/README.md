@@ -2,7 +2,7 @@
 
 CI Metrics is a solution to simplify and automate CI metrics data collection.
 
-The solution consits of:
+The solution consists of:
 
  * ELK instance
 
@@ -35,14 +35,14 @@ The ELK instance is the data store for storing metrics exported from Jenkins job
 
 If you want to install your own ELK instance follow the steps in the section ELK instance.
 
-If you do not want to install you own ELK instance skip the sections 'ELK instance' and 'CI Metrics data listener Jenkins job' sections.
+If you do not want to install you own ELK instance skip the sections *ELK instance* and *CI Metrics data listener Jenkins job* sections.
 
 
 ## ELK instance
 
 ### What is ELK
 
-ELK is a combination of Elastic Search, Logstash and Kibana. Elasticsearch is a non relational database. Logstash collects and pushes logs to the Elasticsearch database. Kibana then takes the data and visualizes it in graphical form and it also makes it possible to query the data.
+ELK is a combination of Elasticsearch, Logstash and Kibana. Elasticsearch is a non relational database. Logstash collects and pushes logs to the Elasticsearch database. Kibana then takes the data and visualizes it in graphical form and it also makes it possible to query the data.
 
 Note that in current design Logstash is not used and the data is directly stored from the CI Metrics data listener Jenkins job into Elasticsearch.
 
@@ -53,7 +53,7 @@ Note that the solution requires an RHEL 7 or Centos 7 system. To install an ELK 
 
 1. ####Add EPEL repository
 
-  See [https://fedoraproject.org/wiki/EPEL] for installation intructions
+  See [https://fedoraproject.org/wiki/EPEL] for installation instructions
 
 
 1. ####Install git and ansible
@@ -97,7 +97,7 @@ The ELK Listener job requires:
 
   - an existing PDC instance - see https://github.com/product-definition-center/
 
-  - a keytab for autentication to PDC via keberos
+  - a keytab for authentication to PDC via keberos
 
 ### Installation of ELK Listener job
 
@@ -111,15 +111,15 @@ The ELK Listener job requires:
 
     Edit the file and:
 
-    - replace LINKTO_ELK_SERVER  with url to an ELK instance
+    - replace LINKTO_ELK_SERVER with url to an ELK instance
 
-    - replace LINKTO_PDC url to PDC instance
+    - replace LINKTO_PDC to with url to a PDC instance
 
     Also make sure the environment variables KEYTAB and PRINCIPAL are defined in your Jenkins environment with details about your kerberos principal and keytab.
 
 1. ####Enable CI publisher for your Jenkins Job
 
-    To enable the job run jenkins-jobs from the Jenkins Job Builder on the file ci_listener.yaml.
+    To enable the job, run `jenkins-jobs` from the Jenkins Job Builder on the file ci_listener.yaml.
 
   >$ jenkins-jobs update ci_listener.yaml
 
@@ -136,11 +136,11 @@ The possible items of the message are defined in this document [https://url.corp
 
 1. #### Make sure to inject the required variables that will be used by the CI publisher in the post build action
 
-    For example you can use the [EnvInject](https://wiki.jenkins-ci.org/display/JENKINS/EnvInject+Plugin) plugin to achive this.
+    For example you can use the [EnvInject](https://wiki.jenkins-ci.org/display/JENKINS/EnvInject+Plugin) plugin to achieve this.
 
 1. #### Enable CI publisher for your Jenkins Job
 
-    Add into your publisher section 'ci-publisher' definition like the one below. Make sure to correctly define the 'message-type' and all the relevant items in your message.
+    Add into your publisher section *ci-publisher* definition like the one below. Make sure to correctly define the *message-type* and all the relevant items in your message.
 
 ```
     publishers:
