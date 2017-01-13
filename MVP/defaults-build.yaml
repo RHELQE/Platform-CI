@@ -80,7 +80,6 @@
                   "jenkins_build_url": "$BUILD_URL",
                   "brew_task_id": "$task_id",
                   "job_names": "$JOB_NAME",
-                  "xunit_links": ""
                 }}
         - email-ext:
             recipients: ${{OWNERSHIP,var="JOB_COOWNERS_EMAILS"}}
