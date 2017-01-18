@@ -96,7 +96,7 @@
                            parsed_json[key] = value
                       elif key == 'channel_id':
                            if not str(value).isdigit():
-                                parsed_json[key] = '-1'
+                                value = '-1'
                            parsed_json[key] = int(value)
                       elif key == 'request':
                            pass
@@ -116,7 +116,7 @@
                            parsed_json[key] = value
                       elif key == 'priority':
                            if not str(value).isdigit():
-                                parsed_json[key] = '-1'
+                                value = '-1'
                            parsed_json[key] = int(value)
                       elif key == 'completion_time':
                            if not brew_time_format.match(value):
@@ -126,7 +126,7 @@
                                 parsed_json[key] = value
                       elif key == 'state':
                            if not str(value).isdigit():
-                                parsed_json[key] = '-1'
+                                value = '-1'
                            parsed_json[key] = int(value)
                       elif key == 'create_time':
                            if not brew_time_format.match(value):
@@ -142,7 +142,7 @@
                            parsed_json[key] = value
                       elif key == 'host_id':
                            if not str(value).isdigit():
-                                parsed_json[key] = '-1'
+                                value = '-1'
                            parsed_json[key] = int(value)
                       elif key == 'method':
                            parsed_json[key] = value
@@ -157,7 +157,7 @@
                            parsed_json[key] = value
                       elif key == 'id':
                            if not str(value).isdigit():
-                                parsed_json[key] = '-1'
+                                value = '-1'
                            parsed_json['brew_task_id'] = int(value)
                       elif key == 'result':
                            parsed_json[key] = value
@@ -392,17 +392,17 @@
                            pass
                       elif key == 'CI_tier':
                            if not value.isdigit():
-                                parsed_json[key] = '-1'
+                                value = '-1'
                            parsed_json[key] = int(value)
                       elif key == 'base_distro':
                            parsed_json[key] = value[:256]
                       elif key == 'compose_id':
                            if not value.isdigit():
-                                parsed_json[key] = '000000'
+                                value = '000000'
                            parsed_json[key] = int(value)
                       elif key == 'brew_task_id':
                            if not value.isdigit():
-                                parsed_json[key] = '000000'
+                                value = '000000'
                            parsed_json[key] = int(value)
                       elif key == 'create_time':
                            if not iso8601.match(value):
