@@ -175,6 +175,7 @@ class CIHandler:
                     print("No Previous log data.")
             else:
                 print("Failure to connect to Elastic Search Server")
+                sys.exit(1)
 
             parser = MetricsParser(message)
             parser.parse(self.ci_message)
