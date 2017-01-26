@@ -125,10 +125,11 @@ class CIHandler:
         # If the index is not on the host yet put it there
         if not self.dry_run and self.ci_index not in indexes:
              self.es_server.request("PUT", "/%s?pretty" % self.ci_index,
-                                                           indextemplate)
+                                    indextemplate)
              res = self.es_server.getresponse()
              if res.status != 200:
                  print("Failed to create index. Exiting..")
+                 sys.exit(1)
 
     def process(self):
         parser = None
@@ -163,15 +164,17 @@ class CIHandler:
             message = dict()
             docid = "%s-%s" % (component, brew_task_id)
 
-            self.es_server.request("GET","/ci-metrics/log/%s?pretty" % (docid))
+            self.es_server.request("GET","/%s/log/%s?pretty" % (self.ci_index, docid))
             res = self.es_server.getresponse()
             if res.status == 200:
                 old_log_json = res.read()
                 old_log = json.loads(old_log_json)
                 if "_source" in old_log:
                     message = old_log["_source"]
+                else:
+                    print("No Previous log data.")
             else:
-                print("No Previous log data.")
+                print("Failure to connect to Elastic Search Server")
 
             parser = MetricsParser(message)
             parser.parse(self.ci_message)
@@ -187,17 +190,15 @@ class CIHandler:
 
         # Push the data to elasticsearch
         if not self.dry_run:
-            self.es_server.request("PUT", "/log/%s" % parser.get_docid(), output)
+            self.es_server.request("PUT",
+                                   "/%s/log/%s" % (self.ci_index, parser.get_docid()),
+                                   output)
             res = self.es_server.getresponse()
             if res.status != 200:
-                print("Failed to create index. Exiting..")
+                print("Failed to Push log data to Elastic Search.")
         else:
-            print("PUT /log/%s" % parser.get_docid())
+            print("PUT /%s/log/%s" % (self.ci_index, parser.get_docid()))
             print(output)
-
-    def output(self):
-        """ Not currently used """
-        return json.dumps(self.output)
 
 class Parser:
     """
@@ -228,7 +229,7 @@ class Parser:
     def handle_digit(self, key, value, ci_message=None):
         if not str(value).isdigit():
             value = '-1'
-        self.message[key] = value
+        self.message[key] = int(value)
 
     def handle_ignore(self, key, value, ci_message=None):
         pass
@@ -247,6 +248,11 @@ class BrewParser(Parser):
             value = 'TIME_NOT_VALID'
         self.message[key] = value
 
+    def handle_brew_task_id(self, key, value, ci_message=None):
+        if not str(value).isdigit():
+            value = '-1'
+        self.message['brew_task_id'] = int(value)
+
     def parse(self, ci_message):
         fields = {'weight' : self.handle_simple,
                   'parent' : self.handle_simple,
@@ -264,7 +270,7 @@ class BrewParser(Parser):
                   'host_id' : self.handle_digit,
                   'method' : self.handle_simple,
                   'arch' : self.handle_simple,
-                  'id' : self.handle_digit,
+                  'id' : self.handle_brew_task_id,
                   'result' : self.handle_simple,
                  }
 
@@ -339,10 +345,14 @@ class MetricsParser(Parser):
                     tester["executed"] = -1
                 if not tester["failed"].isdigit():
                     tester["failed"] = -1
-                self.message["%s_job_%s" % (executor, next_slot)] = job_name
-                self.message["%s_arch_%s" % (executor, next_slot)] = tester["arch"]
-                self.message["%s_tests_exec_%s" % (executor, next_slot)] = tester["executed"]
-                self.message["%s_tests_failed_%s" % (executor, next_slot)] = tester["failed"]
+                self.message["%s_job_%s" %
+                    (executor, next_slot)] = job_name
+                self.message["%s_arch_%s" %
+                    (executor, next_slot)] = tester["arch"]
+                self.message["%s_tests_exec_%s" %
+                    (executor, next_slot)] = int(tester["executed"])
+                self.message["%s_tests_failed_%s" %
+                    (executor, next_slot)] = int(tester["failed"])
 
     def parse(self, ci_message):
         fields = {'trigger' : self.handle_trigger,
@@ -438,7 +448,7 @@ def main(args):
                       help='Elastic Search Server to use')
     parser.add_option('-p', '--pdc', dest='pdc_server', default=None,
                       help='PDC server to use')
-    parser.add_option('-i', '--index', dest='ci_index', default=None,
+    parser.add_option('--ci-index', dest='ci_index', default="ci-metrics",
                       help='Specify the index being processed')
     parser.add_option('--ci_type', dest='ci_type', default=None,
                       help='Specify ci_type, default will use CI_TYPE from env')
