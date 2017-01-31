@@ -167,6 +167,14 @@ class CIHandler:
                 component = MetricsParser.handle_component(self.ci_message["component"])
             if "brew_task_id" in self.ci_message:
                 brew_task_id = MetricsParser.handle_brew_task_id(self.ci_message["brew_task_id"])
+            # Add total time in seconds testing ran for
+            if ('create_time' in self.ci_message) and ('completion_time' in self.ci_message):
+                if iso8601.match(self.ci_message['create_time']) and iso8601.match(self.ci_message['completion_time']):
+                    time_start = time.strptime(self.ci_message['create_time'], '%Y-%m-%dT%H:%M:%SZ')
+                    time_end = time.strptime(self.ci_message['completion_time'], '%Y-%m-%dT%H:%M:%SZ')
+                    time_start = time.mktime(time_start)
+                    time_end = time.mktime(time_end)
+                    self.output['time_spent_seconds'] = int(time_end - time_start)
             message = dict()
             docid = "%s-%s" % (component, brew_task_id)
 
