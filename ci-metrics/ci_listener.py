@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 import sys
 import os
 import json
@@ -9,6 +10,9 @@ import dateutil.parser as dp
 import httplib
 import unittest
 from optparse import OptionParser
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 class PDC:
     def __init__(self, pdc_server):
@@ -25,14 +29,14 @@ class PDC:
                                            (name, version, release))
             res = self.pdc_server.getresponse()
             if res.status != 200:
-                print("Failed to find %s-%s-%s in PDC" % (name, version, release))
+                eprint("Failed to find %s-%s-%s in PDC" %
+                                               (name, version, release))
             pdc_message = res.read()
             pdc_parsed = json.loads(pdc_message)
             # If results isnt there, NVR was not in PDC
             # Can add else and sys.exit later
             # This adds the archs we expect to test for this nvr
             if 'results' in pdc_parsed:
-                 print("results: %s" % pdc_parsed["results"])
                  for id in pdc_parsed['results']:
                       if id['arch'] != 'src':
                            expected_archs = expected_archs + id['arch'] + ' '
@@ -119,8 +123,8 @@ class CIHandler:
         self.es_server.request("GET","/_cat/indices?v")
         res = self.es_server.getresponse()
         if res.status != 200:
-            print("Failed to get list of indexes. Exiting..")
-            sys.exit()
+            eprint("Failed to get list of indexes. Exiting..")
+            sys.exit(1)
         indexes = res.read()
         # If the index is not on the host yet put it there
         if not self.dry_run and self.ci_index not in indexes:
@@ -128,7 +132,7 @@ class CIHandler:
                                     indextemplate)
              res = self.es_server.getresponse()
              if res.status != 200:
-                 print("Failed to create index. Exiting..")
+                 eprint("Failed to create index. Exiting..")
                  sys.exit(1)
 
     def process(self):
@@ -172,9 +176,9 @@ class CIHandler:
                 if "_source" in old_log:
                     message = old_log["_source"]
                 else:
-                    print("No Previous log data.")
+                    eprint("No Previous log data.")
             else:
-                print("Failure to connect to Elastic Search Server")
+                eprint("Failure to connect to Elastic Search Server")
                 sys.exit(1)
 
             parser = MetricsParser(message)
@@ -183,7 +187,7 @@ class CIHandler:
             # Add field that shows CI Testing was done for kibana visualizations
             self.output['CI Testing Done'] = 'true'
         else:
-            print("Unknown ci_type:%s" % self.ci_type)
+            eprint("Unknown ci_type:%s" % self.ci_type)
             sys.exit(1)
 
         # We use nvr+brew_task_id as our elasticsearch docid
@@ -196,7 +200,7 @@ class CIHandler:
                                    output)
             res = self.es_server.getresponse()
             if res.status != 200:
-                print("Failed to Push log data to Elastic Search.")
+                eprint("Failed to Push log data to Elastic Search.")
         else:
             print("PUT /%s/log/%s" % (self.ci_index, parser.get_docid()))
             print(output)
@@ -281,7 +285,7 @@ class BrewParser(Parser):
                     handler = fields[key]
                     handler(key, value)
                 else:
-                    print "Unexpected key: %s" % key
+                    eprint("Unexpected key: %s" % key)
 
 class MetricsParser(Parser):
 
@@ -297,7 +301,7 @@ class MetricsParser(Parser):
     @classmethod
     def handle_component(cls, value):
         if value.count('-') < 2:
-            print "BAD NVR: %s" % value
+            eprint("BAD NVR: %s" % value)
             return False
         else:
             return value[:256]
@@ -439,7 +443,7 @@ class ParseBrewTests(unittest.TestCase):
 
 def main(args):
     if sys.version_info < (2,5):
-        print "Python 2.5 or better is required."
+        eprint("Python 2.5 or better is required.")
         sys.exit(1)
 
     # Parse the command line args
@@ -473,19 +477,23 @@ def main(args):
     options, arguments = parser.parse_args(args)
 
     if options.es_server is None:
-        print("You must specify a Elastic Search Server")
+        eprint("You must specify a Elastic Search Server")
         sys.exit(1)
-    ci_handler = CIHandler(es_server = options.es_server,
-                           pdc_server = options.pdc_server,
-                           ci_index = options.ci_index,
-                           ci_type = options.ci_type,
-                           ci_message = options.ci_message,
-                           scratch = options.scratch,
-                           name = options.name,
-                           version = options.version,
-                           release = options.release,
-                           target = options.target,
-                           dry_run = options.dry_run)
+    try:
+        ci_handler = CIHandler(es_server = options.es_server,
+                               pdc_server = options.pdc_server,
+                               ci_index = options.ci_index,
+                               ci_type = options.ci_type,
+                               ci_message = options.ci_message,
+                               scratch = options.scratch,
+                               name = options.name,
+                               version = options.version,
+                               release = options.release,
+                               target = options.target,
+                               dry_run = options.dry_run)
+    except ValueError, e:
+        eprint("Failed to Initialize CIHandler: %s" % e.message)
+        sys.exit(1)
     ci_handler.init_index()
     ci_handler.process()
     
