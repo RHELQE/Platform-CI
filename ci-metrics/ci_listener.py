@@ -133,7 +133,7 @@ class CIHandler:
              self.es_server.request("PUT", "/%s?pretty" % self.ci_index,
                                     indextemplate)
              res = self.es_server.getresponse()
-             if res.status != 200:
+             if res.status != 201:
                  eprint("Failed to create index. Exiting..")
                  sys.exit(1)
 
@@ -195,18 +195,20 @@ class CIHandler:
         # We use nvr+brew_task_id as our elasticsearch docid
         output = json.dumps(self.output, indent=4)
 
+        if self.debug:
+            print("PUT /%s/log/%s" % (self.ci_index, parser.get_docid()))
+            print(output)
+
         # Push the data to elasticsearch
         if not self.dry_run:
             self.es_server.request("PUT",
                                    "/%s/log/%s" % (self.ci_index, parser.get_docid()),
                                    output)
             res = self.es_server.getresponse()
-            if res.status != 200:
+            if res.status != 201:
                 eprint("Failed to Push log data to Elastic Search."
                        " Status:%s Reason:%s" % (res.status, res.reason))
-        if self.debug:
-            print("PUT /%s/log/%s" % (self.ci_index, parser.get_docid()))
-            print(output)
+                sys.exit(1)
 
 class Parser:
     """
