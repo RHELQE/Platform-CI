@@ -210,6 +210,7 @@ class CIHandler:
                 eprint("Failed to Push log data to Elastic Search."
                        " Status:%s Reason:%s" % (res.status, res.reason))
                 sys.exit(1)
+        return parser.get_docid()
 
 class Parser:
     """
@@ -475,6 +476,8 @@ def main(args):
                       help='Specify release, default will use release from env')
     parser.add_option('--target', dest='target', default=None,
                       help='Specify target, default will use target from env')
+    parser.add_option('--write-docid', dest='docid_file', default=None,
+                      help="Record docid in file")
     parser.add_option('-u', '--unittests', dest='unittests', action='store_true',
                       help='Run unittests')
     parser.add_option('-d', '--dry-run', dest='dry_run', action='store_true',
@@ -504,7 +507,11 @@ def main(args):
         eprint("Failed to Initialize CIHandler: %s" % str(e))
         sys.exit(1)
     ci_handler.init_index()
-    ci_handler.process()
+    docid = ci_handler.process()
+    if options.docid_file:
+        file = open(options.docid_file, 'w')
+        file.write('DOCID=' + docid + '\n')
+        file.close()
     
 if __name__ == '__main__':
     main(sys.argv[1:])
