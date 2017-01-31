@@ -6,7 +6,7 @@
     node: 'jslave-platform'
     triggers:
         - ci-trigger:
-            jms-selector: "(CI_TYPE = 'brew-taskstatechange' AND method = 'build' AND scratch = FALSE) OR (CI_TYPE = 'ci-metricsdata')"
+            jms-selector: "(CI_TYPE = 'brew-taskstatechange' AND method = 'build' AND scratch = FALSE AND new = 'CLOSED') OR (CI_TYPE = 'ci-metricsdata')"
     builders:
         - shell: |
             #!/bin/bash
