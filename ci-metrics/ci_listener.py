@@ -156,7 +156,7 @@ class CIHandler:
             if 'timestamp' not in self.output.keys():
                  self.output['timestamp'] = (int(time.time())*1000)
 
-        elif self.ci_type == 'ci_metricsdata':
+        elif self.ci_type == 'ci-metricsdata':
             if "component" in self.ci_message:
                 component = MetricsParser.handle_component(self.ci_message["component"])
             if "brew_task_id" in self.ci_message:
