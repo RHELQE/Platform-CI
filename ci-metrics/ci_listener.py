@@ -180,7 +180,8 @@ class CIHandler:
                 else:
                     eprint("No Previous log data.")
             else:
-                eprint("Failure to connect to Elastic Search Server")
+                eprint("Failure to connect to Elastic Search Server"
+                       "status:%s reason:%s" % (res.status, res.reason))
                 sys.exit(1)
 
             parser = MetricsParser(message)
