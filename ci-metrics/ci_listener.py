@@ -243,7 +243,7 @@ class BrewParser(Parser):
                                    '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]).'
                                    '[0-9][0-9][0-9][0-9][0-9][0-9]')
     def handle_time(self, key, value, ci_message=None):
-        if self.brew_time_format.match(value):
+        if self.brew_time_format.match(str(value)):
             value = value.replace(" ", "T")[:-7] + "Z"
         else:
             value = 'TIME_NOT_VALID'
@@ -310,7 +310,7 @@ class MetricsParser(Parser):
             return False
 
     def handle_time(self, key, value, ci_message=None):
-        if not self.iso8601.match(value):
+        if not self.iso8601.match(str(value)):
             value = 'TIME_NOT_ISO8601'
         self.message[key] = value
 
