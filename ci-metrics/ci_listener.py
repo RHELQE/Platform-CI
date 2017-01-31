@@ -47,7 +47,8 @@ class CIHandler:
     def __init__(self, es_server=None, pdc_server=None,
                  ci_index=None, ci_type=None, ci_message=None,
                  scratch=None, name=None, version = None,
-                 release=None, target=None, dry_run=False):
+                 release=None, target=None, dry_run=False,
+                 debug=False):
         es_server = es_server if ':' in es_server else "%s:9200" % es_server
         self.es_server = httplib.HTTPConnection(es_server)
         self.pdc_server = pdc_server
@@ -68,6 +69,7 @@ class CIHandler:
         self.target = os.environ.get("target", None) \
                                if target is None else target
         self.dry_run = dry_run
+        self.debug = debug
         self.output = dict()
 
     def init_index(self):
@@ -201,7 +203,7 @@ class CIHandler:
             res = self.es_server.getresponse()
             if res.status != 200:
                 eprint("Failed to Push log data to Elastic Search.")
-        else:
+        if self.debug:
             print("PUT /%s/log/%s" % (self.ci_index, parser.get_docid()))
             print(output)
 
@@ -473,6 +475,8 @@ def main(args):
                       help='Run unittests')
     parser.add_option('-d', '--dry-run', dest='dry_run', action='store_true',
                       help="Don't actually do anything")
+    parser.add_option('-v', '--debug', dest='debug', action='store_true',
+                      help="Debug output")
 
     options, arguments = parser.parse_args(args)
 
@@ -490,7 +494,8 @@ def main(args):
                                version = options.version,
                                release = options.release,
                                target = options.target,
-                               dry_run = options.dry_run)
+                               dry_run = options.dry_run,
+                               debug = options.debug)
     except ValueError, e:
         eprint("Failed to Initialize CIHandler: %s" % e.message)
         sys.exit(1)
