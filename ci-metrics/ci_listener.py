@@ -178,9 +178,11 @@ class CIHandler:
                 if "_source" in old_log:
                     message = old_log["_source"]
                 else:
+                    eprint("Record exists, but _source missing.")
+            elif res.status == 404:
                     eprint("No Previous log data.")
             else:
-                eprint("Failure to connect to Elastic Search Server"
+                eprint("Failure to connect to Elastic Search Server "
                        "status:%s reason:%s" % (res.status, res.reason))
                 sys.exit(1)
 
