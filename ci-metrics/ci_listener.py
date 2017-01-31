@@ -202,7 +202,8 @@ class CIHandler:
                                    output)
             res = self.es_server.getresponse()
             if res.status != 200:
-                eprint("Failed to Push log data to Elastic Search.")
+                eprint("Failed to Push log data to Elastic Search."
+                       " Status:%s Reason:%s" % (res.status, res.reason))
         if self.debug:
             print("PUT /%s/log/%s" % (self.ci_index, parser.get_docid()))
             print(output)
