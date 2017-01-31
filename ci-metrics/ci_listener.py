@@ -498,7 +498,7 @@ def main(args):
                                dry_run = options.dry_run,
                                debug = options.debug)
     except ValueError, e:
-        eprint("Failed to Initialize CIHandler: %s" % e.message)
+        eprint("Failed to Initialize CIHandler: %s" % str(e))
         sys.exit(1)
     ci_handler.init_index()
     ci_handler.process()
