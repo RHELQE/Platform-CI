@@ -10,7 +10,7 @@
     builders:
         - shell: |
             #!/bin/bash
-
+            
             git clone https://github.com/RHQE/platform-ci.git
             kinit -k -t $KEYTAB $PRINCIPAL
             python ./platform-ci/ci-metrics/ci_listener.py --ci-index {index} \

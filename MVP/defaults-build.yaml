@@ -26,6 +26,8 @@
         - timestamps
         - build-name:
             name: ${{ENV,var="name"}}-${{ENV,var="version"}}-${{ENV,var="release"}}
+        - inject:
+            script-content: echo "create_time=$(date --utc +%FT%TZ)" >> $WORKSPACE/job.properties
     publishers:
         - postbuildscript:
             script-only-if-succeeded: False
@@ -66,19 +68,18 @@
                 CI_TYPE=ci-metricsdata
             message-content: |
                 {{
-                  "create_time": "",
+                  "create_time": "$create_time",
                   "tests": $TESTS,
                   "CI_tier": "1",
                   "owner": "$job_owner",
                   "build_type": "",
                   "base_distro": "",
-                  "completion_time": "",
+                  "completion_time": "$(date --utc +%FT%TZ)",
                   "component": "$name-$version-$release",
                   "jenkins_job_url": "$JOB_URL",
                   "jenkins_build_url": "$BUILD_URL",
                   "brew_task_id": "$task_id",
                   "job_names": "$JOB_NAME",
-                  "xunit_links": ""
                 }}
         - email-ext:
             recipients: ${{OWNERSHIP,var="JOB_COOWNERS_EMAILS"}}

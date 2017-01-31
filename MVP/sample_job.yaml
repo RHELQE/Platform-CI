@@ -28,7 +28,7 @@
             bkr job-submit $YOUR_TEST_xml | tee $WORKSPACE/bkr_job.txt
             BKR_JOBID=`cut -d\' -f2 $WORKSPACE/bkr_job.txt`
 
-            echo BKR_JOBID=$BKR_JOBID > $WORKSPACE/job.properties
+            echo BKR_JOBID=$BKR_JOBID >> $WORKSPACE/job.properties
         - inject:
             properties-file: $WORKSPACE/job.properties
         - shell: |
