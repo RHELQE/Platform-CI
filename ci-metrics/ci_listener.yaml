@@ -6,7 +6,7 @@
     node: 'jslave-platform'
     triggers:
         - ci-trigger:
-            jms-selector: "(CI_TYPE = '{index}' AND method = 'build' AND scratch = FALSE) OR (CI_TYPE = 'ci-metricsdata')"
+            jms-selector: "(CI_TYPE = 'brew-taskstatechange' AND method = 'build' AND scratch = FALSE) OR (CI_TYPE = 'ci-metricsdata')"
     builders:
         - shell: |
             #!/bin/bash
@@ -48,7 +48,7 @@
                  subprocess.call(['curl', '--ipv4', '-XPUT', "%s?pretty" % hostindex, '-d', indextemplate])
 
             # Case 1
-            if os.environ["CI_TYPE"] == '{index}':
+            if os.environ["CI_TYPE"] == 'brew-taskstatechange':
                  if "scratch" in os.environ:
                     if os.environ["scratch"] == 'true':
                          # This should never happen due to the jms selector
@@ -96,7 +96,8 @@
                            parsed_json[key] = value
                       elif key == 'channel_id':
                            if not str(value).isdigit():
-                                parsed_json[key] = '-1'
+                                value = '-1'
+                           parsed_json[key] = int(value)
                       elif key == 'request':
                            pass
                       elif key == 'start_time':
@@ -115,7 +116,8 @@
                            parsed_json[key] = value
                       elif key == 'priority':
                            if not str(value).isdigit():
-                                parsed_json[key] = '-1'
+                                value = '-1'
+                           parsed_json[key] = int(value)
                       elif key == 'completion_time':
                            if not brew_time_format.match(value):
                                 parsed_json[key] = 'COM_TIME_NOT_VALID'
@@ -124,7 +126,8 @@
                                 parsed_json[key] = value
                       elif key == 'state':
                            if not str(value).isdigit():
-                                parsed_json[key] = '-1'
+                                value = '-1'
+                           parsed_json[key] = int(value)
                       elif key == 'create_time':
                            if not brew_time_format.match(value):
                                 parsed_json[key] = 'CREATE_TIME_NOT_VALID'
@@ -139,7 +142,8 @@
                            parsed_json[key] = value
                       elif key == 'host_id':
                            if not str(value).isdigit():
-                                parsed_json[key] = '-1'
+                                value = '-1'
+                           parsed_json[key] = int(value)
                       elif key == 'method':
                            parsed_json[key] = value
                       elif key == 'completion_ts':
@@ -153,8 +157,8 @@
                            parsed_json[key] = value
                       elif key == 'id':
                            if not str(value).isdigit():
-                                parsed_json[key] = '-1'
-                           parsed_json['brew_task_id'] = value
+                                value = '-1'
+                           parsed_json['brew_task_id'] = int(value)
                       elif key == 'result':
                            parsed_json[key] = value
                       else: # Did not expect this key!
@@ -245,9 +249,8 @@
                  for key, value in parsed_json.items():
                       if key == 'component':
                            if parsed_json[key].count('-') < 2:
-                                parsed_json['nvr'] = 'BAD NVR:'+value[:256]
-                           else:
-                                parsed_json['nvr'] = value[:256]
+                                print('BAD NVR!! ',parsed_json[key])
+                           parsed_json['nvr'] = value[:256]
                            del parsed_json[key]
                       elif key == 'trigger':
                            if (value != 'manual') and (value != 'git') and (value != 'commit') and (value != 'git push') and (value != 'rhpkg build') and (value != 'brew build'):
@@ -281,11 +284,11 @@
                                                parsed_json['beaker_job_1'] = JOB_TO_ADD
                                                if not tester['executed'].isdigit():
                                                     tester['executed'] = '-1'
-                                               parsed_json['beaker_tests_exec_1'] = tester['executed']
+                                               parsed_json['beaker_tests_exec_1'] = int(tester['executed'])
                                                parsed_json['beaker_arch_1'] = tester['arch']
                                                if not tester['failed'].isdigit():
                                                     tester['failed'] = '-1'
-                                               parsed_json['beaker_tests_failed_1'] = tester['failed']
+                                               parsed_json['beaker_tests_failed_1'] = int(tester['failed'])
                                           else:
                                                # This job is from old log, so was already stored
                                                myval = 0
@@ -301,8 +304,8 @@
                                                else:
                                                     parsed_json['beaker_job_'+str(index+1)] = old_log['_source']['beaker_job_'+str(myval)]
                                                     parsed_json['beaker_arch_'+str(index+1)] = old_log['_source']['beaker_arch_'+str(myval)]
-                                                    parsed_json['beaker_tests_exec_'+str(index+1)] = old_log['_source']['beaker_tests_exec_'+str(myval)]
-                                                    parsed_json['beaker_tests_failed_'+str(index+1)] = old_log['_source']['beaker_tests_failed_'+str(myval)]
+                                                    parsed_json['beaker_tests_exec_'+str(index+1)] = int(old_log['_source']['beaker_tests_exec_'+str(myval)])
+                                                    parsed_json['beaker_tests_failed_'+str(index+1)] = int(old_log['_source']['beaker_tests_failed_'+str(myval)])
                                 elif tester['executor'] == 'CI-OSP':
                                      # Find out how many jobs have
                                      # already been reported by old_log
@@ -329,10 +332,10 @@
                                                parsed_json['ciosp_job_1'] = JOB_TO_ADD
                                                if not tester['executed'].isdigit():
                                                     tester['executed'] = '-1'
-                                               parsed_json['ciosp_tests_exec_1'] = tester['executed']
+                                               parsed_json['ciosp_tests_exec_1'] = int(tester['executed'])
                                                if not tester['failed'].isdigit():
                                                     tester['failed'] = '-1'
-                                               parsed_json['ciosp_tests_failed_1'] = tester['failed']
+                                               parsed_json['ciosp_tests_failed_1'] = int(tester['failed'])
                                                parsed_json['ciosp_arch_1'] = tester['arch']
                                           else:
                                                # This job is from old log, so was already stored
@@ -349,8 +352,8 @@
                                                else:
                                                     parsed_json['ciosp_job_'+str(index+1)] = old_log['_source']['ciosp_job_'+str(myval)]
                                                     parsed_json['ciosp_arch_'+str(index+1)] = old_log['_source']['ciosp_arch_'+str(myval)]
-                                                    parsed_json['ciosp_tests_exec_'+str(index+1)] = old_log['_source']['ciosp_tests_exec_'+str(myval)]
-                                                    parsed_json['ciosp_tests_failed_'+str(index+1)] = old_log['_source']['ciosp_tests_failed_'+str(myval)]
+                                                    parsed_json['ciosp_tests_exec_'+str(index+1)] = int(old_log['_source']['ciosp_tests_exec_'+str(myval)])
+                                                    parsed_json['ciosp_tests_failed_'+str(index+1)] = int(old_log['_source']['ciosp_tests_failed_'+str(myval)])
                                 else:
                                      print('Unsupported test executor!')
                            del parsed_json['tests'] 
@@ -364,10 +367,10 @@
                                      parsed_json['beaker_arch_1'] = tester['arch']
                                      if not tester['executed'].isdigit():
                                           tester['executed'] = '-1'
-                                     parsed_json['beaker_tests_exec_1'] = tester['executed']
+                                     parsed_json['beaker_tests_exec_1'] = int(tester['executed'])
                                      if not tester['failed'].isdigit():
                                           tester['failed'] = '-1'
-                                     parsed_json['beaker_tests_failed_1'] = tester['failed']
+                                     parsed_json['beaker_tests_failed_1'] = int(tester['failed'])
                                 elif tester['executor'] == 'CI-OSP':
                                      if 'job_names' in parsed_json.keys():
                                           parsed_json['ciosp_job_1'] = parsed_json['job_names']
@@ -376,10 +379,10 @@
                                      parsed_json['ciosp_arch_1'] = tester['arch']
                                      if not tester['executed'].isdigit():
                                           tester['executed'] = '-1'
-                                     parsed_json['ciosp_tests_exec_1'] = tester['executed']
+                                     parsed_json['ciosp_tests_exec_1'] = int(tester['executed'])
                                      if not tester['failed'].isdigit():
                                           tester['failed'] = '-1'
-                                     parsed_json['ciosp_tests_failed_1'] = tester['failed']
+                                     parsed_json['ciosp_tests_failed_1'] = int(tester['failed'])
                                 else:
                                      print('Unsupported test executor!')
                            del parsed_json[key]
@@ -389,15 +392,18 @@
                            pass
                       elif key == 'CI_tier':
                            if not value.isdigit():
-                                parsed_json[key] = '-1'
+                                value = '-1'
+                           parsed_json[key] = int(value)
                       elif key == 'base_distro':
                            parsed_json[key] = value[:256]
                       elif key == 'compose_id':
                            if not value.isdigit():
-                                parsed_json[key] = '000000'
+                                value = '000000'
+                           parsed_json[key] = int(value)
                       elif key == 'brew_task_id':
                            if not value.isdigit():
-                                parsed_json[key] = '000000'
+                                value = '000000'
+                           parsed_json[key] = int(value)
                       elif key == 'create_time':
                            if not iso8601.match(value):
                                 parsed_json[key] = 'CRE_TIME_NOT_ISO8601'
@@ -425,6 +431,15 @@
                  parsed_json['CI Testing Done'] = 'true'
                  if 'timestamp' not in parsed_json.keys():
                       parsed_json['timestamp'] = (int(time.time())*1000)
+
+                 # Add total time in seconds testing ran for
+                 if ('create_time' in parsed_json.keys()) and ('completion_time' in parsed_json.keys()):
+                      if iso8601.match(parsed_json['create_time']) and iso8601.match(parsed_json['completion_time']):
+                           time_start = time.strptime(parsed_json['create_time'], '%Y-%m-%dT%H:%M:%SZ')
+                           time_end = time.strptime(parsed_json['completion_time'], '%Y-%m-%dT%H:%M:%SZ')
+                           time_start = time.mktime(time_start)
+                           time_end = time.mktime(time_end)
+                           parsed_json['time_spent_seconds'] = int(time_end - time_start)
 
                  # If _source not in old_log, there is no old log for this nvr
                  if '_source' in old_log.keys():
@@ -459,6 +474,6 @@
     name: ci-metrics-listener
     server: LINKTO_ELK_SERVER
     pdc_rpm_link: LINKTO_PDC/api/v1/rpms
-    index: brew-taskstatechange
+    index: CI-Metrics
     jobs:
       - ci-metricsdata-listener
