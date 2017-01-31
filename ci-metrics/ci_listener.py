@@ -475,9 +475,6 @@ def main(args):
     if options.es_server is None:
         print("You must specify a Elastic Search Server")
         sys.exit(1)
-    if options.ci_type is None:
-        print("You must specify a ci_type")
-        sys.exit(1)
     ci_handler = CIHandler(es_server = options.es_server,
                            pdc_server = options.pdc_server,
                            ci_index = options.ci_index,
