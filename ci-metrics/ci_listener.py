@@ -133,6 +133,7 @@ class CIHandler:
              self.es_server.request("PUT", "/%s?pretty" % self.ci_index,
                                     indextemplate)
              res = self.es_server.getresponse()
+             data = res.read()
              if res.status != 201:
                  eprint("Failed to create index. Exiting..")
                  sys.exit(1)
@@ -213,6 +214,7 @@ class CIHandler:
                                    "/%s/log/%s" % (self.ci_index, parser.get_docid()),
                                    output)
             res = self.es_server.getresponse()
+            data = res.read()
             if res.status != 201:
                 eprint("Failed to Push log data to Elastic Search."
                        " Status:%s Reason:%s" % (res.status, res.reason))
