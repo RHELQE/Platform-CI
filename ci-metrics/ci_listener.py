@@ -163,13 +163,14 @@ class CIHandler:
                  self.output['timestamp'] = (int(time.time())*1000)
 
         elif self.ci_type == 'ci-metricsdata':
-            if "component" in self.ci_message:
-                component = MetricsParser.handle_component(self.ci_message["component"])
-            if "brew_task_id" in self.ci_message:
-                brew_task_id = MetricsParser.handle_brew_task_id(self.ci_message["brew_task_id"])
-            message = dict()
+            # component and brew_task_id are required to be in the ci message
+            component = MetricsParser.handle_component(
+                                        self.ci_message.get("component"))
+            brew_task_id = MetricsParser.handle_brew_task_id(
+                                        self.ci_message.get("brew_task_id"))
             docid = "%s-%s" % (component, brew_task_id)
 
+            message = dict()
             self.es_server.request("GET","/%s/log/%s?pretty" % (self.ci_index, docid))
             res = self.es_server.getresponse()
             if res.status == 200:
@@ -189,6 +190,9 @@ class CIHandler:
             parser = MetricsParser(message)
             parser.parse(self.ci_message)
             self.output = parser.message
+            # If we failed to look up the previous record we need to store these
+            self.output["nvr"] = component
+            self.output["brew_task_id"] = brew_task_id
             # Add field that shows CI Testing was done for kibana visualizations
             self.output['CI Testing Done'] = 'true'
         else:
@@ -508,6 +512,10 @@ def main(args):
     except ValueError, e:
         eprint("Failed to Initialize CIHandler: %s" % str(e))
         sys.exit(1)
+    except:
+        eprint("Unexpected error:", sys.exc_info()[0])
+        sys.exit(1)
+
     ci_handler.init_index()
     docid = ci_handler.process()
     if options.docid_file:
