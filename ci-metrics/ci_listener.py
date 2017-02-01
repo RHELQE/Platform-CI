@@ -192,7 +192,7 @@ class CIHandler:
             self.output = parser.message
             # If we failed to look up the previous record we need to store these
             self.output["nvr"] = component
-            self.output["brew_task_id"] = brew_task_id
+            self.output["brew_task_id"] = int(brew_task_id)
             # Add field that shows CI Testing was done for kibana visualizations
             self.output['CI Testing Done'] = 'true'
         else:
