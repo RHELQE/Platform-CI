@@ -158,9 +158,6 @@ class CIHandler:
             self.output['expected_archs'] = pdc.get_archs(self.name,
                                                           self.version,
                                                           self.release)
-            # It is pivotal the doc has a timestamp for storing it
-            if 'timestamp' not in self.output.keys():
-                 self.output['timestamp'] = (int(time.time())*1000)
 
         elif self.ci_type == 'ci-metricsdata':
             # component and brew_task_id are required to be in the ci message
@@ -198,6 +195,10 @@ class CIHandler:
         else:
             eprint("Unknown ci_type:%s" % self.ci_type)
             sys.exit(1)
+
+        # It is pivotal the doc has a timestamp for storing it
+        if 'timestamp' not in self.output.keys():
+             self.output['timestamp'] = (int(time.time())*1000)
 
         # We use nvr+brew_task_id as our elasticsearch docid
         output = json.dumps(self.output, indent=4)
