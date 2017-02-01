@@ -170,8 +170,8 @@ class CIHandler:
             message = dict()
             self.es_server.request("GET","/%s/log/%s?pretty" % (self.ci_index, docid))
             res = self.es_server.getresponse()
+            old_log_json = res.read()
             if res.status == 200:
-                old_log_json = res.read()
                 old_log = json.loads(old_log_json)
                 if "_source" in old_log:
                     message = old_log["_source"]
