@@ -253,18 +253,15 @@ class Parser:
         pass
 
 class BrewParser(Parser):
-    brew_time_format = re.compile(r'(\d{4})-(0[1-9]|1[0-2])-'
-                                   '(0[1-9]|1[0-9]|2[0-9]|3[01]) '
-                                   '(0[0-9]|1[0-9]|2[0-3]):'
-                                   '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]):'
-                                   '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]).'
-                                   '[0-9][0-9][0-9][0-9][0-9][0-9]')
+    time_format = re.compile(r'(\d{4})-(0[1-9]|1[0-2])-'
+                              '(0[1-9]|1[0-9]|2[0-9]|3[01]) '
+                              '(0[0-9]|1[0-9]|2[0-3]):'
+                              '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]):'
+                              '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]).'
+                              '[0-9][0-9][0-9][0-9][0-9][0-9]')
     def handle_time(self, key, value, ci_message=None):
-        if self.brew_time_format.match(str(value)):
-            value = value.replace(" ", "T")[:-7] + "Z"
-        else:
-            value = 'TIME_NOT_VALID'
-        self.message[key] = value
+        if self.time_format.match(str(value)):
+            self.message[key] = value.replace(" ", "T")[:-7] + "Z"
 
     def handle_brew_task_id(self, key, value, ci_message=None):
         if not str(value).isdigit():
@@ -306,10 +303,10 @@ class MetricsParser(Parser):
         self.message = message
         
     # ISO8601 regex.  We use this for metrics timestamps
-    iso8601 = re.compile(r'(\d{{4}})-(0[1-9]|1[0-2])-(0[1-9]|1[0-9]|2[0-9]|3[01])'
-                          '(|[tT\s])(0[0-9]|1[0-9]|2[0-3]):'
-                          '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]):'
-                          '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])Z')
+    time_format = re.compile(r'(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|1[0-9]|2[0-9]|3[01])'
+                              '(|[tT\s])(0[0-9]|1[0-9]|2[0-3]):'
+                              '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]):'
+                              '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])Z')
 
     @classmethod
     def handle_component(cls, value):
@@ -327,9 +324,8 @@ class MetricsParser(Parser):
             return False
 
     def handle_time(self, key, value, ci_message=None):
-        if not self.iso8601.match(str(value)):
-            value = 'TIME_NOT_ISO8601'
-        self.message[key] = value
+        if self.time_format.match(str(value)):
+            self.message[key] = value
 
     def handle_trigger(self, key, value, ci_message=None):
         valid_triggers = ["manual", "git", "commit", "git push",
