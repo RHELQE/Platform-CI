@@ -215,7 +215,7 @@ class CIHandler:
                                    output)
             res = self.es_server.getresponse()
             data = res.read()
-            if res.status != 201:
+            if res.status not in [200, 201]:
                 eprint("Failed to Push log data to Elastic Search."
                        " Status:%s Reason:%s" % (res.status, res.reason))
                 sys.exit(1)
