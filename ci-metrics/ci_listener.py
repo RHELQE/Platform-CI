@@ -193,7 +193,7 @@ class MetricsParser(Parser):
 
     def handle_brew_task_id(self, key, value):
         if str(value).isdigit():
-            self.message_out[key] = value
+            self.message_out[key] = int(value)
 
     def handle_time(self, key, value):
         if self.time_format.match(str(value)):
