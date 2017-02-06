@@ -43,34 +43,307 @@ class PDC:
                  expected_archs = expected_archs[:-1]
         return expected_archs
 
-class CIHandler:
-    def __init__(self, es_server=None, pdc_server=None,
-                 ci_index=None, ci_type=None, ci_message=None,
-                 scratch=None, name=None, version = None,
-                 release=None, target=None, dry_run=False,
-                 debug=False):
-        es_server = es_server if ':' in es_server else "%s:9200" % es_server
+class Parser(object):
+    """
+    Parser for CI_MESSAGE
+    """
+
+    CI_TYPE = None
+
+    def __init__(self, message_in, options):
+        self.message_in = message_in
+        self.options = options
+        self.message_out = dict()
+
+    def handle_simple(self, key, value):
+        self.message_out[key] = value
+
+    def handle_simple64(self, key, value):
+        self.message_out[key] = value[:64]
+
+    def handle_simple256(self, key, value):
+        self.message_out[key] = value[:256]
+
+    def handle_simple1024(self, key, value):
+        self.message_out[key] = value[:1024]
+
+    def handle_digit(self, key, value):
+        if not str(value).isdigit():
+            value = '-1'
+        self.message_out[key] = int(value)
+
+    def handle_ignore(self, key, value):
+        pass
+
+    def get_docid(self):
+        raise NotImplementedError()
+
+    @classmethod
+    def check_type(cls, ci_type):
+        return ci_type == cls.CI_TYPE
+
+class BrewParser(Parser):
+    CI_TYPE = "brew-taskstatechange"
+
+    time_format = re.compile(r'(\d{4})-(0[1-9]|1[0-2])-'
+                              '(0[1-9]|1[0-9]|2[0-9]|3[01]) '
+                              '(0[0-9]|1[0-9]|2[0-3]):'
+                              '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]):'
+                              '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]).'
+                              '[0-9][0-9][0-9][0-9][0-9][0-9]')
+
+    def get_name(self):
+        return os.environ.get("name", None) \
+                          if self.options.name is None \
+                          else self.options.name
+
+    def get_version(self):
+        return os.environ.get("version", None) \
+                          if self.options.version is None \
+                          else self.options.version
+
+    def get_release(self):
+        return os.environ.get("release", None) \
+                          if self.options.release is None \
+                          else self.options.release
+
+    def get_nvr(self):
+        return "%s-%s-%s" % (self.get_name(),
+                             self.get_version(),
+                             self.get_release())
+
+    def get_docid(self):
+        return "%s-%s" % (self.get_nvr(),
+                           str(os.environ.get("id")))
+
+    def handle_time(self, key, value):
+        if self.time_format.match(str(value)):
+            self.message_out[key] = value.replace(" ", "T")[:-7] + "Z"
+
+    def handle_brew_task_id(self, key, value):
+        if not str(value).isdigit():
+            value = '-1'
+        self.message_out['brew_task_id'] = int(value)
+
+    def parse(self, message_out):
+        self.message_out = message_out
+        fields = {'weight' : self.handle_simple,
+                  'parent' : self.handle_simple,
+                  'channel_id' : self.handle_digit,
+                  'request' : self.handle_ignore,
+                  'start_time' : self.handle_time,
+                  'waiting' : self.handle_simple,
+                  'awaited' : self.handle_simple,
+                  'label' : self.handle_simple,
+                  'priority' : self.handle_digit,
+                  'completion_time' : self.handle_time,
+                  'state' : self.handle_digit,
+                  'create_time' : self.handle_time,
+                  'owner' : self.handle_simple,
+                  'host_id' : self.handle_digit,
+                  'method' : self.handle_simple,
+                  'arch' : self.handle_simple,
+                  'id' : self.handle_brew_task_id,
+                  'result' : self.handle_simple,
+                  'start_ts' : self.handle_ignore,
+                  'create_ts' : self.handle_ignore,
+                  'completion_ts' : self.handle_ignore,
+                 }
+
+        # Add field that shows package was built in brew for
+        # visualizations in kibana
+        self.message_out['Brew Built'] = 'true'
+        self.message_out['scratch'] = os.environ.get("scratch", None) \
+                               if self.options.scratch is None else self.options.scratch
+        self.message_out['target'] = os.environ.get("target", None) \
+                               if self.options.target is None else self.options.target
+
+        pdc = PDC(self.options.pdc_server)
+        self.message_out['expected_archs'] = pdc.get_archs(self.get_name(),
+                                                           self.get_version(),
+                                                           self.get_release())
+        self.message_out['nvr'] = self.get_nvr()
+        if 'info' in self.message_in:
+            for key, value in self.message_in['info'].items():
+                if key in fields:
+                    handler = fields[key]
+                    handler(key, value)
+                else:
+                    eprint("Unexpected key: %s" % key)
+        return self.message_out
+
+class MetricsParser(Parser):
+    CI_TYPE = "ci-metricsdata"
+
+    # ISO8601 regex.  We use this for metrics timestamps
+    time_format = re.compile(r'(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|1[0-9]|2[0-9]|3[01])'
+                              '(|[tT\s])(0[0-9]|1[0-9]|2[0-3]):'
+                              '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]):'
+                              '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])Z')
+
+    def get_docid(self):
+        docid = "%s-%s" % (self.message_in.get("component"),
+                           str(self.message_in.get("brew_task_id")))
+        return docid
+
+    def handle_component(self, key, value):
+        if value.count('-') < 2:
+            eprint("BAD NVR: %s" % value)
+            self.message_out["nvr"] = value[:256]
+
+    def handle_brew_task_id(self, key, value):
+        if str(value).isdigit():
+            self.message_out[key] = value
+
+    def handle_time(self, key, value):
+        if self.time_format.match(str(value)):
+            self.message_out[key] = value
+
+    def handle_trigger(self, key, value):
+        valid_triggers = ["manual", "git", "commit", "git push",
+                          "rhpkg build", "brew build"]
+        if value in valid_triggers:
+            self.message_out[key] = value
+
+    def handle_build_type(self, key, value):
+        valid_build_types = ["official", "scratch"]
+        if value in valid_build_types:
+            self.message_out[key] = value
+
+    def find_next_slot(self, executor):
+        slot = 1
+        for key in self.message_out.keys():
+            if key.startswith("%s_job_" % executor):
+                slot += 1
+        return slot
+
+    def handle_tests(self, key, value):
+        valid_executors = ["beaker", "CI-OSP", "Foreman", "RPMDiff"]
+        for i, tester in enumerate(value):
+            executor = tester["executor"]
+            next_slot = self.find_next_slot(executor)
+            if executor in valid_executors:
+                if "job_names" in self.message_in.keys():
+                    job_name = self.message_in["job_names"]
+                else:
+                    job_name = "DUMMY_%s" % next_slot
+                if not tester["executed"].isdigit():
+                    tester["executed"] = -1
+                if not tester["failed"].isdigit():
+                    tester["failed"] = -1
+                self.message_out["%s_job_%s" %
+                    (executor, next_slot)] = job_name
+                self.message_out["%s_arch_%s" %
+                    (executor, next_slot)] = tester["arch"]
+                self.message_out["%s_tests_exec_%s" %
+                    (executor, next_slot)] = int(tester["executed"])
+                self.message_out["%s_tests_failed_%s" %
+                    (executor, next_slot)] = int(tester["failed"])
+
+    def parse(self, message_out):
+        self.message_out = message_out
+        fields = {'trigger' : self.handle_trigger,
+                  'tests' : self.handle_tests,
+                  'jenkins_job_url' : self.handle_simple,
+                  'base_distro' : self.handle_simple256,
+                  'compose_id' : self.handle_digit,
+                  'create_time' : self.handle_time,
+                  'completion_time' : self.handle_time,
+                  'CI_infra_failure' : self.handle_simple,
+                  'CI_infra_failure_desc' : self.handle_simple1024,
+                  'job_names' : self.handle_simple256,
+                  'CI_tier' : self.handle_digit,
+                  'build_type' : self.handle_build_type,
+                  'owner' : self.handle_simple64,
+                  'content-length' : self.handle_simple,
+                  'destination' : self.handle_simple,
+                  'expires' : self.handle_simple,
+                  'xunit_links' : self.handle_simple,
+                  'jenkins_build_url' : self.handle_simple,
+                  'component' : self.handle_component,
+                  'brew_task_id' : self.handle_brew_task_id,
+                 }
+
+        # Add field that shows CI Testing was done for kibana visualizations
+        self.message_out['CI Testing Done'] = 'true'
+        for key, value in self.message_in.items():
+            if key in fields:
+                handler = fields[key]
+                handler(key, value)
+        return self.message_out
+
+class ParserManager(object):
+    def __init__(self, message_in, options):
+        self.options = options
+        self.message_in = message_in
+        self.ci_index = options.ci_index
+        self.dry_run = options.dry_run
+        self.debug = options.debug
+        self.parser_engine = self.choose_parser_engine()
+        self.docid = self.get_docid()
+        es_server = options.es_server if ':' in options.es_server \
+                                      else "%s:9200" % options.es_server
         self.es_server = httplib.HTTPConnection(es_server)
-        self.pdc_server = pdc_server
-        self.ci_index = ci_index
-        self.ci_type = os.environ.get("CI_TYPE", None) \
-                               if ci_type is None else ci_type
-        ci_message = os.environ.get("CI_MESSAGE", None) \
-                               if ci_message is None else ci_message
-        self.ci_message = json.loads(ci_message)
-        self.scratch = os.environ.get("scratch", None) \
-                               if scratch is None else scratch
-        self.name = os.environ.get("name", None) \
-                               if name is None else name
-        self.version = os.environ.get("version", None) \
-                               if version is None else version
-        self.release = os.environ.get("release", None) \
-                               if release is None else release
-        self.target = os.environ.get("target", None) \
-                               if target is None else target
-        self.dry_run = dry_run
-        self.debug = debug
-        self.output = dict()
+        self.message_out = self.get_log()
+
+    def choose_parser_engine(self):
+        ci_type = os.environ.get("CI_TYPE", None) \
+                                  if self.options.ci_type is None \
+                                        else self.options.ci_type
+        for parser in Parser.__subclasses__():
+            if parser.check_type(ci_type):
+                return parser(self.message_in, self.options)
+
+    def get_docid(self):
+        return self.parser_engine.get_docid()
+
+    def get_log(self):
+        message_out = dict()
+        print("GET","/%s/log/%s?pretty" % (self.ci_index, self.docid))
+        self.es_server.request("GET","/%s/log/%s?pretty" % (self.ci_index, self.docid))
+        res = self.es_server.getresponse()
+        old_log_json = res.read()
+        if res.status == 200:
+            old_log = json.loads(old_log_json)
+            if "_source" in old_log:
+                message_out = old_log["_source"]
+            else:
+                eprint("Record exists, but _source missing.")
+        elif res.status == 404:
+                eprint("No Previous log data.")
+        else:
+            eprint("Failure to connect to Elastic Search Server "
+                   "status:%s reason:%s" % (res.status, res.reason))
+            #sys.exit(1)
+        return message_out
+
+    def parse_message(self):
+        self.message_out = self.parser_engine.parse(self.message_out)
+
+        # It is pivotal the doc has a timestamp for storing it
+        if 'timestamp' not in self.message_out:
+             self.message_out['timestamp'] = (int(time.time())*1000)
+
+    def update_log(self):
+
+        # We use nvr+brew_task_id as our elasticsearch docid
+        output = json.dumps(self.message_out, indent=4)
+
+        if self.debug:
+            print("PUT /%s/log/%s" % (self.ci_index, self.get_docid()))
+            print(output)
+
+        # Push the data to elasticsearch
+        if not self.dry_run:
+            self.es_server.request("PUT",
+                                   "/%s/log/%s" % (self.ci_index, self.get_docid()),
+                                   output)
+            res = self.es_server.getresponse()
+            data = res.read()
+            if res.status not in [200, 201]:
+                eprint("Failed to Push log data to Elastic Search."
+                       " Status:%s Reason:%s" % (res.status, res.reason))
+                #sys.exit(1)
 
     def init_index(self):
         # This template is for elasticsearch and allows timestamp to be your time field
@@ -83,37 +356,37 @@ class CIHandler:
                         "timestamp": {
                             "type": "date"
                         }
-                    }, 
+                    },
                     "dynamic_templates": [
                         {
                             "message_field": {
-                                "match_mapping_type": "string", 
+                                "match_mapping_type": "string",
                                 "mapping": {
-                                    "index": "analyzed", 
-                                    "type": "string", 
+                                    "index": "analyzed",
+                                    "type": "string",
                                     "omit_norms": true
-                                }, 
+                                },
                                 "match": "message"
                             }
-                        }, 
+                        },
                         {
                             "string_fields": {
-                                "match_mapping_type": "string", 
+                                "match_mapping_type": "string",
                                 "mapping": {
-                                    "index": "analyzed", 
-                                    "type": "string", 
+                                    "index": "analyzed",
+                                    "type": "string",
                                     "fielddata": {
                                         "format": "disabled"
-                                    }, 
+                                    },
                                     "fields": {
                                         "raw": {
-                                            "index": "not_analyzed", 
-                                            "type": "string", 
+                                            "index": "not_analyzed",
+                                            "type": "string",
                                             "doc_values": true
                                         }
-                                    }, 
+                                    },
                                     "omit_norms": true
-                                }, 
+                                },
                                 "match": "*"
                             }
                         }
@@ -137,265 +410,6 @@ class CIHandler:
              if res.status != 201:
                  eprint("Failed to create index. Exiting..")
                  sys.exit(1)
-
-    def process(self):
-        parser = None
-        if self.ci_type == 'brew-taskstatechange':
-            parser = BrewParser()
-            parser.parse(self.ci_message)
-            self.output = parser.message
-            self.output['nvr'] = "%s-%s-%s" % (self.name,
-                                               self.version,
-                                               self.release)
-
-            # Add field that shows package was built in brew for
-            # visualizations in kibana
-            self.output['Brew Built'] = 'true'
-            if self.scratch:
-                self.output['scratch'] = self.scratch
-            if self.target:
-                self.output['target'] = self.target
-            pdc = PDC(self.pdc_server)
-            self.output['expected_archs'] = pdc.get_archs(self.name,
-                                                          self.version,
-                                                          self.release)
-
-        elif self.ci_type == 'ci-metricsdata':
-            # component and brew_task_id are required to be in the ci message
-            component = MetricsParser.handle_component(
-                                        self.ci_message.get("component"))
-            brew_task_id = MetricsParser.handle_brew_task_id(
-                                        self.ci_message.get("brew_task_id"))
-            docid = "%s-%s" % (component, brew_task_id)
-
-            message = dict()
-            self.es_server.request("GET","/%s/log/%s?pretty" % (self.ci_index, docid))
-            res = self.es_server.getresponse()
-            old_log_json = res.read()
-            if res.status == 200:
-                old_log = json.loads(old_log_json)
-                if "_source" in old_log:
-                    message = old_log["_source"]
-                else:
-                    eprint("Record exists, but _source missing.")
-            elif res.status == 404:
-                    eprint("No Previous log data.")
-            else:
-                eprint("Failure to connect to Elastic Search Server "
-                       "status:%s reason:%s" % (res.status, res.reason))
-                sys.exit(1)
-
-            parser = MetricsParser(message)
-            parser.parse(self.ci_message)
-            self.output = parser.message
-            # If we failed to look up the previous record we need to store these
-            self.output["nvr"] = component
-            self.output["brew_task_id"] = int(brew_task_id)
-            # Add field that shows CI Testing was done for kibana visualizations
-            self.output['CI Testing Done'] = 'true'
-        else:
-            eprint("Unknown ci_type:%s" % self.ci_type)
-            sys.exit(1)
-
-        # It is pivotal the doc has a timestamp for storing it
-        if 'timestamp' not in self.output.keys():
-             self.output['timestamp'] = (int(time.time())*1000)
-
-        # We use nvr+brew_task_id as our elasticsearch docid
-        output = json.dumps(self.output, indent=4)
-
-        if self.debug:
-            print("PUT /%s/log/%s" % (self.ci_index, parser.get_docid()))
-            print(output)
-
-        # Push the data to elasticsearch
-        if not self.dry_run:
-            self.es_server.request("PUT",
-                                   "/%s/log/%s" % (self.ci_index, parser.get_docid()),
-                                   output)
-            res = self.es_server.getresponse()
-            data = res.read()
-            if res.status not in [200, 201]:
-                eprint("Failed to Push log data to Elastic Search."
-                       " Status:%s Reason:%s" % (res.status, res.reason))
-                sys.exit(1)
-        return parser.get_docid()
-
-class Parser:
-    """
-    Parser for CI_MESSAGE
-    """
-
-    def __init__(self):
-        self.message = dict()
-
-    def get_docid(self):
-        docid = ""
-        if "nvr" in self.message and "brew_task_id" in self.message:
-            docid = "%s-%s" % (self.message['nvr'], str(self.message['brew_task_id']))
-        return docid
-
-    def handle_simple(self, key, value, ci_message=None):
-        self.message[key] = value
-
-    def handle_simple64(self, key, value, ci_message=None):
-        self.message[key] = value[:64]
-
-    def handle_simple256(self, key, value, ci_message=None):
-        self.message[key] = value[:256]
-
-    def handle_simple1024(self, key, value, ci_message=None):
-        self.message[key] = value[:1024]
-
-    def handle_digit(self, key, value, ci_message=None):
-        if not str(value).isdigit():
-            value = '-1'
-        self.message[key] = int(value)
-
-    def handle_ignore(self, key, value, ci_message=None):
-        pass
-
-class BrewParser(Parser):
-    time_format = re.compile(r'(\d{4})-(0[1-9]|1[0-2])-'
-                              '(0[1-9]|1[0-9]|2[0-9]|3[01]) '
-                              '(0[0-9]|1[0-9]|2[0-3]):'
-                              '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]):'
-                              '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]).'
-                              '[0-9][0-9][0-9][0-9][0-9][0-9]')
-    def handle_time(self, key, value, ci_message=None):
-        if self.time_format.match(str(value)):
-            self.message[key] = value.replace(" ", "T")[:-7] + "Z"
-
-    def handle_brew_task_id(self, key, value, ci_message=None):
-        if not str(value).isdigit():
-            value = '-1'
-        self.message['brew_task_id'] = int(value)
-
-    def parse(self, ci_message):
-        fields = {'weight' : self.handle_simple,
-                  'parent' : self.handle_simple,
-                  'channel_id' : self.handle_digit,
-                  'request' : self.handle_ignore,
-                  'start_time' : self.handle_time,
-                  'waiting' : self.handle_simple,
-                  'awaited' : self.handle_simple,
-                  'label' : self.handle_simple,
-                  'priority' : self.handle_digit,
-                  'completion_time' : self.handle_time,
-                  'state' : self.handle_digit,
-                  'create_time' : self.handle_time,
-                  'owner' : self.handle_simple,
-                  'host_id' : self.handle_digit,
-                  'method' : self.handle_simple,
-                  'arch' : self.handle_simple,
-                  'id' : self.handle_brew_task_id,
-                  'result' : self.handle_simple,
-                 }
-
-        if ci_message and 'info' in ci_message:
-            for key, value in ci_message['info'].items():
-                if key in fields:
-                    handler = fields[key]
-                    handler(key, value)
-                else:
-                    eprint("Unexpected key: %s" % key)
-
-class MetricsParser(Parser):
-
-    def __init__(self, message=dict()):
-        self.message = message
-        
-    # ISO8601 regex.  We use this for metrics timestamps
-    time_format = re.compile(r'(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|1[0-9]|2[0-9]|3[01])'
-                              '(|[tT\s])(0[0-9]|1[0-9]|2[0-3]):'
-                              '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]):'
-                              '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])Z')
-
-    @classmethod
-    def handle_component(cls, value):
-        if value.count('-') < 2:
-            eprint("BAD NVR: %s" % value)
-            return False
-        else:
-            return value[:256]
-
-    @classmethod
-    def handle_brew_task_id(cls, value):
-        if str(value).isdigit():
-            return value
-        else:
-            return False
-
-    def handle_time(self, key, value, ci_message=None):
-        if self.time_format.match(str(value)):
-            self.message[key] = value
-
-    def handle_trigger(self, key, value, ci_message=None):
-        valid_triggers = ["manual", "git", "commit", "git push",
-                          "rhpkg build", "brew build"]
-        if value in valid_triggers:
-            self.message[key] = value
-
-    def handle_build_type(self, key, value, ci_message=None):
-        valid_build_types = ["official", "scratch"]
-        if value in valid_build_types:
-            self.message[key] = value
-
-    def find_next_slot(self, executor):
-        slot = 1
-        for key in self.message.keys():
-            if key.startswith("%s_job_" % executor):
-                slot += 1
-        return slot
-
-    def handle_tests(self, key, value, ci_message=None):
-        valid_executors = ["beaker", "ciosp"]
-        for i, tester in enumerate(value):
-            executor = tester["executor"]
-            next_slot = self.find_next_slot(executor)
-            if executor in valid_executors:
-                if "job_names" in ci_message.keys():
-                    job_name = ci_message["job_names"]
-                else:
-                    job_name = "DUMMY_%s" % next_slot
-                if not tester["executed"].isdigit():
-                    tester["executed"] = -1
-                if not tester["failed"].isdigit():
-                    tester["failed"] = -1
-                self.message["%s_job_%s" %
-                    (executor, next_slot)] = job_name
-                self.message["%s_arch_%s" %
-                    (executor, next_slot)] = tester["arch"]
-                self.message["%s_tests_exec_%s" %
-                    (executor, next_slot)] = int(tester["executed"])
-                self.message["%s_tests_failed_%s" %
-                    (executor, next_slot)] = int(tester["failed"])
-
-    def parse(self, ci_message):
-        fields = {'trigger' : self.handle_trigger,
-                  'tests' : self.handle_tests,
-                  'jenkins_job_url' : self.handle_simple,
-                  'base_distro' : self.handle_simple256,
-                  'compose_id' : self.handle_digit,
-                  'create_time' : self.handle_time,
-                  'completion_time' : self.handle_time,
-                  'CI_infra_failure' : self.handle_simple,
-                  'CI_infra_failure_desc' : self.handle_simple1024,
-                  'job_names' : self.handle_simple256,
-                  'CI_tier' : self.handle_digit,
-                  'build_type' : self.handle_build_type,
-                  'owner' : self.handle_simple64,
-                  'content-length' : self.handle_simple,
-                  'destination' : self.handle_simple,
-                  'expires' : self.handle_simple,
-                  'xunit_links' : self.handle_simple,
-                  'jenkins_build_url' : self.handle_simple,
-                 }
-
-        for key, value in ci_message.items():
-            if key in fields:
-                handler = fields[key]
-                handler(key, value, ci_message=ci_message)
 
 class ParseCIMetricTests(unittest.TestCase):
     def test_ci_message(self):
@@ -467,7 +481,7 @@ def main(args):
                       help='PDC server to use')
     parser.add_option('--ci-index', dest='ci_index', default="ci-metrics",
                       help='Specify the index being processed')
-    parser.add_option('--ci_type', dest='ci_type', default=None,
+    parser.add_option('--ci-type', dest='ci_type', default=None,
                       help='Specify ci_type, default will use CI_TYPE from env')
     parser.add_option('--ci_message', dest='ci_message', default=None,
                       help='Specify ci_message, default will use CI_MESSAGE from env')
@@ -495,31 +509,26 @@ def main(args):
     if options.es_server is None:
         eprint("You must specify a Elastic Search Server")
         sys.exit(1)
+
+    message_in = os.environ.get("CI_MESSAGE", None) \
+                           if options.ci_message is None else options.ci_message
+    message_in = json.loads(message_in)
+
     try:
-        ci_handler = CIHandler(es_server = options.es_server,
-                               pdc_server = options.pdc_server,
-                               ci_index = options.ci_index,
-                               ci_type = options.ci_type,
-                               ci_message = options.ci_message,
-                               scratch = options.scratch,
-                               name = options.name,
-                               version = options.version,
-                               release = options.release,
-                               target = options.target,
-                               dry_run = options.dry_run,
-                               debug = options.debug)
+        parser = ParserManager(message_in, options)
     except ValueError, e:
-        eprint("Failed to Initialize CIHandler: %s" % str(e))
+        eprint("Failed to Initialize ParserManager: %s" % str(e))
         sys.exit(1)
     except:
         eprint("Unexpected error:", sys.exc_info()[0])
         sys.exit(1)
 
-    ci_handler.init_index()
-    docid = ci_handler.process()
+    parser.init_index()
+    parser.parse_message()
+    parser.update_log()
     if options.docid_file:
         file = open(options.docid_file, 'w')
-        file.write('DOCID=' + docid + '\n')
+        file.write('DOCID=' + parser.docid + '\n')
         file.close()
     
 if __name__ == '__main__':
