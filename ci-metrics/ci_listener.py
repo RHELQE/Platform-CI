@@ -55,25 +55,30 @@ class Parser(object):
         self.options = options
         self.message_out = dict()
 
-    def handle_simple(self, key, value):
+    def handle_simple(self, key, value, retried=False):
         self.message_out[key] = value
+        return True
 
-    def handle_simple64(self, key, value):
+    def handle_simple64(self, key, value, retried=False):
         self.message_out[key] = value[:64]
+        return True
 
-    def handle_simple256(self, key, value):
+    def handle_simple256(self, key, value, retried=False):
         self.message_out[key] = value[:256]
+        return True
 
-    def handle_simple1024(self, key, value):
+    def handle_simple1024(self, key, value, retried=False):
         self.message_out[key] = value[:1024]
+        return True
 
-    def handle_digit(self, key, value):
+    def handle_digit(self, key, value, retried=False):
         if not str(value).isdigit():
             value = '-1'
         self.message_out[key] = int(value)
+        return True
 
-    def handle_ignore(self, key, value):
-        pass
+    def handle_ignore(self, key, value, retried=False):
+        return True
 
     def get_docid(self):
         raise NotImplementedError()
@@ -116,11 +121,11 @@ class BrewParser(Parser):
         return "%s-%s" % (self.get_nvr(),
                            str(os.environ.get("id")))
 
-    def handle_time(self, key, value):
+    def handle_time(self, key, value, retried=False):
         if self.time_format.match(str(value)):
             self.message_out[key] = value.replace(" ", "T")[:-7] + "Z"
 
-    def handle_brew_task_id(self, key, value):
+    def handle_brew_task_id(self, key, value, retried=False):
         if not str(value).isdigit():
             value = '-1'
         self.message_out['brew_task_id'] = int(value)
@@ -186,29 +191,34 @@ class MetricsParser(Parser):
                            str(self.message_in.get("brew_task_id")))
         return docid
 
-    def handle_component(self, key, value):
+    def handle_component(self, key, value, retried=False):
         if value.count('-') < 2:
             eprint("BAD NVR: %s" % value)
             self.message_out["nvr"] = value[:256]
+        return True
 
-    def handle_brew_task_id(self, key, value):
+    def handle_brew_task_id(self, key, value, retried=False):
         if str(value).isdigit():
             self.message_out[key] = int(value)
+        return True
 
-    def handle_time(self, key, value):
+    def handle_time(self, key, value, retried=False):
         if self.time_format.match(str(value)):
             self.message_out[key] = value
+        return True
 
-    def handle_trigger(self, key, value):
+    def handle_trigger(self, key, value, retried=False):
         valid_triggers = ["manual", "git", "commit", "git push",
                           "rhpkg build", "brew build"]
         if value in valid_triggers:
             self.message_out[key] = value
+        return True
 
-    def handle_build_type(self, key, value):
+    def handle_build_type(self, key, value, retried=False):
         valid_build_types = ["official", "scratch"]
         if value in valid_build_types:
             self.message_out[key] = value
+        return True
 
     def find_next_slot(self, executor):
         slot = 1
@@ -217,8 +227,16 @@ class MetricsParser(Parser):
                 slot += 1
         return slot
 
-    def handle_tests(self, key, value):
+    def handle_tests(self, key, value, retried=False):
+        required_entries = ["create_time", "completion_time" ]
         valid_executors = ["beaker", "CI-OSP", "Foreman", "RPMDiff"]
+
+        # Only be strict the first time
+        if not retried:
+            for req_entry in required_entries:
+                if req_entry not in self.message_out:
+                    return False
+
         for i, tester in enumerate(value):
             executor = tester["executor"]
             next_slot = self.find_next_slot(executor)
@@ -231,6 +249,12 @@ class MetricsParser(Parser):
                     tester["executed"] = -1
                 if not tester["failed"].isdigit():
                     tester["failed"] = -1
+                start = self.message_out.get("create_time",
+                                             "2000-01-01T00:00:00Z")
+                end = self.message_out.get("completion_time",
+                                            "2000-01-01T00:00:00Z")
+                time_start = time.mktime(time.strptime(start, '%Y-%m-%dT%H:%M:%SZ'))
+                time_end = time.mktime(time.strptime(end, '%Y-%m-%dT%H:%M:%SZ'))
                 self.message_out["%s_job_%s" %
                     (executor, next_slot)] = job_name
                 self.message_out["%s_arch_%s" %
@@ -239,6 +263,9 @@ class MetricsParser(Parser):
                     (executor, next_slot)] = int(tester["executed"])
                 self.message_out["%s_tests_failed_%s" %
                     (executor, next_slot)] = int(tester["failed"])
+                self.message_out["%s_time_spent_%s" %
+                    (executor, next_slot)] = max(int(time_end - time_start), 0)
+        return True
 
     def parse(self, message_out):
         self.message_out = message_out
@@ -266,10 +293,21 @@ class MetricsParser(Parser):
 
         # Add field that shows CI Testing was done for kibana visualizations
         self.message_out['CI Testing Done'] = 'true'
-        for key, value in self.message_in.items():
+        # Convert message_in dict to array of tuples.
+        # Items can come in any order but some handle routines
+        # need data that may not have been handled yet.
+        # Those routines should return False and will be
+        # moved to the end of the queue to try one more time.
+        message_in_list = self.message_in.items()
+        retry_list = []
+        while message_in_list:
+            (key, value) = message_in_list.pop(0)
             if key in fields:
                 handler = fields[key]
-                handler(key, value)
+                retried = key in retry_list
+                if not handler(key, value, retried=retried):
+                    message_in_list.append((key, value))
+                    retry_list.append(key)
         return self.message_out
 
 class ParserManager(object):
