@@ -280,7 +280,7 @@ class MetricsParser(Parser):
                   'tests' : self.handle_tests,
                   'jenkins_job_url' : self.handle_simple,
                   'base_distro' : self.handle_simple256,
-                  'compose_id' : self.handle_digit,
+                  'compose_id' : self.handle_simple256,
                   'create_time' : self.handle_time,
                   'completion_time' : self.handle_time,
                   'CI_infra_failure' : self.handle_simple,
