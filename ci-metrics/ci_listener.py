@@ -187,8 +187,15 @@ class MetricsParser(Parser):
                               '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])Z')
 
     def get_docid(self):
-        docid = "%s-%s" % (self.message_in.get("component"),
-                           str(self.message_in.get("brew_task_id")))
+        component = self.message_in.get("component")
+        brew_task_id = self.message_in.get("brew_task_id")
+        compose_id = self.message_in.get("compose_id")
+        if component and brew_task_id:
+            docid = "%s-%s" % ( component, brew_task_id)
+        elif compose_id:
+            docid = "%s" % compose_id
+        else:
+            docid = None
         return docid
 
     def handle_component(self, key, value, retried=False):
