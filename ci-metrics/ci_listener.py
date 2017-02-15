@@ -83,20 +83,19 @@ class Parser(object):
     def get_docid(self):
         raise NotImplementedError()
 
+    @classmethod
+    def check_type(cls, ci_type):
+        return ci_type == cls.CI_TYPE
+
 class BrewParser(Parser):
+    CI_TYPE = "brew-taskstatechange"
+
     time_format = re.compile(r'(\d{4})-(0[1-9]|1[0-2])-'
                               '(0[1-9]|1[0-9]|2[0-9]|3[01]) '
                               '(0[0-9]|1[0-9]|2[0-3]):'
                               '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]):'
                               '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]).'
                               '[0-9][0-9][0-9][0-9][0-9][0-9]')
-
-    @classmethod
-    def is_valid(cls, message_in, options):
-        ci_type = os.environ.get("CI_TYPE", None) \
-                                  if options.ci_type is None \
-                                        else options.ci_type
-        return ci_type == "brew-taskstatechange"
 
     def get_name(self):
         return os.environ.get("name", None) \
@@ -179,24 +178,17 @@ class BrewParser(Parser):
         return self.message_out
 
 class MetricsParser(Parser):
+    CI_TYPE = "ci-metricsdata"
+
     # ISO8601 regex.  We use this for metrics timestamps
     time_format = re.compile(r'(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|1[0-9]|2[0-9]|3[01])'
                               '(|[tT\s])(0[0-9]|1[0-9]|2[0-3]):'
                               '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]):'
                               '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])Z')
 
-    @classmethod
-    def is_valid(cls, message_in, options):
-        ci_type = os.environ.get("CI_TYPE", None) \
-                                  if options.ci_type is None \
-                                        else options.ci_type
-        return ci_type == "ci-metricsdata" and \
-               message_in.get("component") != None and \
-               message_in.get("brew_task_id") != None
-
     def get_docid(self):
         docid = "%s-%s" % (self.message_in.get("component"),
-                           self.message_in.get("brew_task_id"))
+                           str(self.message_in.get("brew_task_id")))
         return docid
 
     def handle_component(self, key, value, retried=False):
@@ -333,8 +325,11 @@ class ParserManager(object):
         self.message_out = self.get_log()
 
     def choose_parser_engine(self):
+        ci_type = os.environ.get("CI_TYPE", None) \
+                                  if self.options.ci_type is None \
+                                        else self.options.ci_type
         for parser in Parser.__subclasses__():
-            if parser.is_valid(self.message_in, self.options):
+            if parser.check_type(ci_type):
                 return parser(self.message_in, self.options)
 
     def get_docid(self):
