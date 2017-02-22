@@ -305,8 +305,7 @@ class MetricsParser(Parser):
             message_out.get("recipients","").split(",")))
 
         # Add new recipients to the set
-        for userid in value:
-             recipient_set.add(userid)
+        recipient_set.update(value)
 
         self.message_out["recipients"] = ", ".join(recipient_set)
 
