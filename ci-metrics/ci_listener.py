@@ -10,6 +10,7 @@ import dateutil.parser as dp
 import httplib
 import unittest
 from optparse import OptionParser
+from sets import Set
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -187,6 +188,9 @@ class MetricsParser(Parser):
                               '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])Z')
 
     def get_docid(self):
+        # If component, brew_task_id, and compose_id are
+        # all defined, we are using component-brew_task_id
+        # as the docid in elasticsearch
         component = self.message_in.get("component")
         brew_task_id = self.message_in.get("brew_task_id")
         compose_id = self.message_in.get("compose_id")
@@ -251,7 +255,7 @@ class MetricsParser(Parser):
                 if "job_names" in self.message_in.keys():
                     job_name = self.message_in["job_names"]
                 else:
-                    job_name = "DUMMY_%s" % next_slot
+                    job_name = "UNNAMED_%s" % next_slot
                 if not tester["executed"].isdigit():
                     tester["executed"] = -1
                 if not tester["failed"].isdigit():
@@ -272,6 +276,79 @@ class MetricsParser(Parser):
                     (executor, next_slot)] = int(tester["failed"])
                 self.message_out["%s_time_spent_%s" %
                     (executor, next_slot)] = max(int(time_end - time_start), 0)
+                # Create some aggregated fields so that they
+                # don't have to be scripted in kibana
+                if "%s_total_tests_exec" % executor in self.message_out.keys():
+                    self.message_out["%s_total_tests_exec" %
+                        executor] = int(tester["executed"]) + \
+                        self.message_out["%s_total_tests_exec" % executor]
+                else:
+                    self.message_out["%s_total_tests_exec" %
+                        executor] = int(tester["executed"])
+                if "total_tests_exec" in self.message_out.keys():
+                    self.message_out["total_tests_exec"] = \
+                        int(tester["executed"]) + \
+                        self.message_out["total_tests_exec"]
+                else:
+                    self.message_out["total_tests_exec"] = \
+                        int(tester["executed"])
+                if "%s_total_tests_failed" % executor \
+                    in self.message_out.keys():
+                        self.message_out["%s_total_tests_failed" %
+                            executor] = int(tester["failed"]) + \
+                            self.message_out["%s_total_tests_failed" % executor]
+                else:
+                    self.message_out["%s_total_tests_failed" %
+                        executor] = int(tester["failed"])
+                if "total_tests_failed" in self.message_out.keys():
+                    self.message_out["total_tests_failed"] = \
+                        int(tester["failed"]) + \
+                        self.message_out["total_tests_failed"]
+                else:
+                    self.message_out["total_tests_failed"] = \
+                        int(tester["failed"])
+                if "total_time_secs" in self.message_out.keys():
+                    self.message_out["total_time_secs"] = \
+                        max(int(time_end - time_start), 0) + \
+                        self.message_out["total_time_secs"]
+                else:
+                    self.message_out["total_time_secs"] = \
+                        max(int(time_end - time_start), 0)
+                if "total_time_mins" in self.message_out.keys():
+                    self.message_out["total_time_mins"] = \
+                        max(int(time_end - time_start), 0)/60.0 + \
+                        self.message_out["total_time_mins"]
+                else:
+                    self.message_out["total_time_mins"] = \
+                        max(int(time_end - time_start), 0)/60.0
+                if "total_time_hrs" in self.message_out.keys():
+                    self.message_out["total_time_hrs"] = \
+                        max(int(time_end - time_start), 0)/3600.0 + \
+                        self.message_out["total_time_hrs"]
+                else:
+                    self.message_out["total_time_hrs"] = \
+                        max(int(time_end - time_start), 0)/3600.0
+        return True
+
+    def handle_recipients(self, key, value, retried=False):
+        recipient_set = Set([])
+        # Add old recipients to the set
+        if "recipients" in self.message_out.keys():
+            for userid in self.message_out["recipients"].split(','):
+                recipient_set.add(userid[1].strip())
+
+        # Add new recipients to the set
+        for userid in enumerate(value):
+             recipient_set.add(userid)
+
+        # Make a comma separated list for recipients field in output
+        recipient_string = ""
+        for userid in recipient_set:
+            recipient_string = recipient_string + \
+                userid[1].strip() + ", "
+        recipient_string = recipient_string[:-2]
+        self.message_out["recipients"] = recipient_string
+
         return True
 
     def parse(self, message_out):
@@ -296,6 +373,7 @@ class MetricsParser(Parser):
                   'jenkins_build_url' : self.handle_simple,
                   'component' : self.handle_component,
                   'brew_task_id' : self.handle_brew_task_id,
+                  'recipients' : self.handle_recipients
                  }
 
         # Add field that shows CI Testing was done for kibana visualizations
@@ -460,19 +538,19 @@ class ParseCIMetricTests(unittest.TestCase):
     def test_ci_message(self):
         ci_message = """
                         CI_MESSAGE={
-                          "create_time": "",
+                          "create_time": "2016-08-18T20:13:51Z",
                           "tests": [{"executor": "beaker", "arch": "", "executed": "60", "failed": "5"}],
                           "CI_tier": "1",
                           "owner": "",
                           "build_type": "",
                           "base_distro": "",
-                          "completion_time": "",
+                          "completion_time": "2016-08-18T20:52:10Z",
                           "component": "kernel-3.10.0-547.el7",
                           "jenkins_job_url": "https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/job/kernel-general-rhel-kmod/",
                           "jenkins_build_url": "https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/job/kernel-general-rhel-kmod/272/",
                           "brew_task_id": "12388882",
                           "job_names": "kernel-general-rhel-kmod",
-                          "xunit_links": ""
+                          "recipients": ["jbieren", "bpeck"]
                         }
                      """
 
