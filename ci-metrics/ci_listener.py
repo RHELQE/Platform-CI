@@ -10,6 +10,7 @@ import dateutil.parser as dp
 import httplib
 import unittest
 from optparse import OptionParser
+from sets import Set
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -187,6 +188,9 @@ class MetricsParser(Parser):
                               '(0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])Z')
 
     def get_docid(self):
+        # If component, brew_task_id, and compose_id are
+        # all defined, we are using component-brew_task_id
+        # as the docid in elasticsearch
         component = self.message_in.get("component")
         brew_task_id = self.message_in.get("brew_task_id")
         compose_id = self.message_in.get("compose_id")
@@ -234,6 +238,10 @@ class MetricsParser(Parser):
                 slot += 1
         return slot
 
+    def message_key_addition(self, message_out_key, addition):
+        self.message_out[message_out_key] = \
+            self.message_out.get(message_out_key, 0) + addition
+
     def handle_tests(self, key, value, retried=False):
         required_entries = ["create_time", "completion_time" ]
         valid_executors = ["beaker", "CI-OSP", "Foreman", "RPMDiff"]
@@ -251,7 +259,7 @@ class MetricsParser(Parser):
                 if "job_names" in self.message_in.keys():
                     job_name = self.message_in["job_names"]
                 else:
-                    job_name = "DUMMY_%s" % next_slot
+                    job_name = "MISSING_JOB_NAME_%s" % next_slot
                 if not tester["executed"].isdigit():
                     tester["executed"] = -1
                 if not tester["failed"].isdigit():
@@ -262,16 +270,45 @@ class MetricsParser(Parser):
                                             "2000-01-01T00:00:00Z")
                 time_start = time.mktime(time.strptime(start, '%Y-%m-%dT%H:%M:%SZ'))
                 time_end = time.mktime(time.strptime(end, '%Y-%m-%dT%H:%M:%SZ'))
+                execed = int(tester["executed"])
+                failed = int(tester["failed"])
+                seconds = max(int(time_end - time_start), 0)
                 self.message_out["%s_job_%s" %
                     (executor, next_slot)] = job_name
                 self.message_out["%s_arch_%s" %
                     (executor, next_slot)] = tester["arch"]
                 self.message_out["%s_tests_exec_%s" %
-                    (executor, next_slot)] = int(tester["executed"])
+                    (executor, next_slot)] = execed
                 self.message_out["%s_tests_failed_%s" %
-                    (executor, next_slot)] = int(tester["failed"])
+                    (executor, next_slot)] = failed
                 self.message_out["%s_time_spent_%s" %
-                    (executor, next_slot)] = max(int(time_end - time_start), 0)
+                    (executor, next_slot)] = seconds
+                # Create some aggregated fields so that they
+                # don't have to be scripted in kibana
+                supplements = [ \
+                    ["%s_total_tests_exec" % executor, execed],
+                    ["total_tests_exec", execed],
+                    ["%s_total_tests_failed" % executor, failed],
+                    ["total_tests_failed", failed],
+                    ["total_time_secs", seconds],
+                    ["total_time_mins", seconds/60.0],
+                    ["total_time_hrs", seconds/3600.0]] 
+                for key, addition in supplements:
+                    self.message_key_addition(key, addition)
+        return True
+
+    def handle_recipients(self, key, value, retried=False):
+        # Add old recipients to the set
+        recipient_set = Set()
+        if "recipients" in self.message_out:
+            recipient_set.update(map(lambda x: x.strip(), \
+            message_out.get("recipients","").split(",")))
+
+        # Add new recipients to the set
+        recipient_set.update(value)
+
+        self.message_out["recipients"] = ", ".join(recipient_set)
+
         return True
 
     def parse(self, message_out):
@@ -296,6 +333,7 @@ class MetricsParser(Parser):
                   'jenkins_build_url' : self.handle_simple,
                   'component' : self.handle_component,
                   'brew_task_id' : self.handle_brew_task_id,
+                  'recipients' : self.handle_recipients
                  }
 
         # Add field that shows CI Testing was done for kibana visualizations
@@ -460,19 +498,19 @@ class ParseCIMetricTests(unittest.TestCase):
     def test_ci_message(self):
         ci_message = """
                         CI_MESSAGE={
-                          "create_time": "",
+                          "create_time": "2016-08-18T20:13:51Z",
                           "tests": [{"executor": "beaker", "arch": "", "executed": "60", "failed": "5"}],
                           "CI_tier": "1",
                           "owner": "",
                           "build_type": "",
                           "base_distro": "",
-                          "completion_time": "",
+                          "completion_time": "2016-08-18T20:52:10Z",
                           "component": "kernel-3.10.0-547.el7",
                           "jenkins_job_url": "https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/job/kernel-general-rhel-kmod/",
                           "jenkins_build_url": "https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/job/kernel-general-rhel-kmod/272/",
                           "brew_task_id": "12388882",
                           "job_names": "kernel-general-rhel-kmod",
-                          "xunit_links": ""
+                          "recipients": ["jbieren", "bpeck"]
                         }
                      """
 
