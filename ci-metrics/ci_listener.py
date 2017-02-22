@@ -238,6 +238,10 @@ class MetricsParser(Parser):
                 slot += 1
         return slot
 
+    def message_key_addition(self, message_out_key, addition):
+        self.message_out[message_out_key] = \
+            self.message_out.get(message_out_key, 0) + addition
+
     def handle_tests(self, key, value, retried=False):
         required_entries = ["create_time", "completion_time" ]
         valid_executors = ["beaker", "CI-OSP", "Foreman", "RPMDiff"]
@@ -266,88 +270,45 @@ class MetricsParser(Parser):
                                             "2000-01-01T00:00:00Z")
                 time_start = time.mktime(time.strptime(start, '%Y-%m-%dT%H:%M:%SZ'))
                 time_end = time.mktime(time.strptime(end, '%Y-%m-%dT%H:%M:%SZ'))
+                execed = int(tester["executed"])
+                failed = int(tester["failed"])
+                seconds = max(int(time_end - time_start), 0)
                 self.message_out["%s_job_%s" %
                     (executor, next_slot)] = job_name
                 self.message_out["%s_arch_%s" %
                     (executor, next_slot)] = tester["arch"]
                 self.message_out["%s_tests_exec_%s" %
-                    (executor, next_slot)] = int(tester["executed"])
+                    (executor, next_slot)] = execed
                 self.message_out["%s_tests_failed_%s" %
-                    (executor, next_slot)] = int(tester["failed"])
+                    (executor, next_slot)] = failed
                 self.message_out["%s_time_spent_%s" %
-                    (executor, next_slot)] = max(int(time_end - time_start), 0)
+                    (executor, next_slot)] = seconds
                 # Create some aggregated fields so that they
                 # don't have to be scripted in kibana
-                if "%s_total_tests_exec" % executor in self.message_out.keys():
-                    self.message_out["%s_total_tests_exec" %
-                        executor] = int(tester["executed"]) + \
-                        self.message_out["%s_total_tests_exec" % executor]
-                else:
-                    self.message_out["%s_total_tests_exec" %
-                        executor] = int(tester["executed"])
-                if "total_tests_exec" in self.message_out.keys():
-                    self.message_out["total_tests_exec"] = \
-                        int(tester["executed"]) + \
-                        self.message_out["total_tests_exec"]
-                else:
-                    self.message_out["total_tests_exec"] = \
-                        int(tester["executed"])
-                if "%s_total_tests_failed" % executor \
-                    in self.message_out.keys():
-                        self.message_out["%s_total_tests_failed" %
-                            executor] = int(tester["failed"]) + \
-                            self.message_out["%s_total_tests_failed" % executor]
-                else:
-                    self.message_out["%s_total_tests_failed" %
-                        executor] = int(tester["failed"])
-                if "total_tests_failed" in self.message_out.keys():
-                    self.message_out["total_tests_failed"] = \
-                        int(tester["failed"]) + \
-                        self.message_out["total_tests_failed"]
-                else:
-                    self.message_out["total_tests_failed"] = \
-                        int(tester["failed"])
-                if "total_time_secs" in self.message_out.keys():
-                    self.message_out["total_time_secs"] = \
-                        max(int(time_end - time_start), 0) + \
-                        self.message_out["total_time_secs"]
-                else:
-                    self.message_out["total_time_secs"] = \
-                        max(int(time_end - time_start), 0)
-                if "total_time_mins" in self.message_out.keys():
-                    self.message_out["total_time_mins"] = \
-                        max(int(time_end - time_start), 0)/60.0 + \
-                        self.message_out["total_time_mins"]
-                else:
-                    self.message_out["total_time_mins"] = \
-                        max(int(time_end - time_start), 0)/60.0
-                if "total_time_hrs" in self.message_out.keys():
-                    self.message_out["total_time_hrs"] = \
-                        max(int(time_end - time_start), 0)/3600.0 + \
-                        self.message_out["total_time_hrs"]
-                else:
-                    self.message_out["total_time_hrs"] = \
-                        max(int(time_end - time_start), 0)/3600.0
+                supplements = [ \
+                    ["%s_total_tests_exec" % executor, execed],
+                    ["total_tests_exec", execed],
+                    ["%s_total_tests_failed" % executor, failed],
+                    ["total_tests_failed", failed],
+                    ["total_time_secs", seconds],
+                    ["total_time_mins", seconds/60.0],
+                    ["total_time_hrs", seconds/3600.0]] 
+                for key, addition in supplements:
+                    self.message_key_addition(key, addition)
         return True
 
     def handle_recipients(self, key, value, retried=False):
-        recipient_set = Set([])
         # Add old recipients to the set
-        if "recipients" in self.message_out.keys():
-            for userid in self.message_out["recipients"].split(','):
-                recipient_set.add(userid[1].strip())
+        recipient_set = Set(map(lambda x: x.strip(), 
+            str(self.message_out.get("recipients")).split(",")))
+        recipient_set.discard("None")
 
         # Add new recipients to the set
         for userid in enumerate(value):
              recipient_set.add(userid)
 
-        # Make a comma separated list for recipients field in output
-        recipient_string = ""
-        for userid in recipient_set:
-            recipient_string = recipient_string + \
-                userid[1].strip() + ", "
-        recipient_string = recipient_string[:-2]
-        self.message_out["recipients"] = recipient_string
+        self.message_out["recipients"] = ", ".join(str(recipient[1]) \
+            for recipient in recipient_set)
 
         return True
 
