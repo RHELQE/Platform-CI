@@ -255,7 +255,7 @@ class MetricsParser(Parser):
                 if "job_names" in self.message_in.keys():
                     job_name = self.message_in["job_names"]
                 else:
-                    job_name = "UNNAMED_%s" % next_slot
+                    job_name = "MISSING_JOB_NAME_%s" % next_slot
                 if not tester["executed"].isdigit():
                     tester["executed"] = -1
                 if not tester["failed"].isdigit():
