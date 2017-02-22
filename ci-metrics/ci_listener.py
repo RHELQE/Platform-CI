@@ -299,16 +299,16 @@ class MetricsParser(Parser):
 
     def handle_recipients(self, key, value, retried=False):
         # Add old recipients to the set
-        recipient_set = Set(map(lambda x: x.strip(), 
-            str(self.message_out.get("recipients")).split(",")))
-        recipient_set.discard("None")
+        recipient_set = Set()
+        if "recipients" in self.message_out:
+            recipient_set.update(map(lambda x: x.strip(), \
+            message_out.get("recipients","").split(",")))
 
         # Add new recipients to the set
-        for userid in enumerate(value):
+        for userid in value:
              recipient_set.add(userid)
 
-        self.message_out["recipients"] = ", ".join(recipient[1] \
-            for recipient in recipient_set)
+        self.message_out["recipients"] = ", ".join(recipient_set)
 
         return True
 
