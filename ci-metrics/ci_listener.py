@@ -307,7 +307,7 @@ class MetricsParser(Parser):
         for userid in enumerate(value):
              recipient_set.add(userid)
 
-        self.message_out["recipients"] = ", ".join(str(recipient[1]) \
+        self.message_out["recipients"] = ", ".join(recipient[1] \
             for recipient in recipient_set)
 
         return True
