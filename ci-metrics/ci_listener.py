@@ -338,6 +338,9 @@ class MetricsParser(Parser):
 
         # Add field that shows CI Testing was done for kibana visualizations
         self.message_out['CI Testing Done'] = 'true'
+        # Add name as its own field so we can count how many
+        # unique package names have come in
+        self.message_out["name"] = self.message_in["component"].split('-')[:-2]
         # Convert message_in dict to array of tuples.
         # Items can come in any order but some handle routines
         # need data that may not have been handled yet.
