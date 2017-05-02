@@ -256,8 +256,8 @@ class MetricsParser(Parser):
             executor = tester["executor"]
             next_slot = self.find_next_slot(executor)
             if executor in valid_executors:
-                if "job_names" in self.message_in.keys():
-                    job_name = self.message_in["job_names"]
+                if "job_name" in self.message_in.keys():
+                    job_name = self.message_in["job_name"]
                 else:
                     job_name = "MISSING_JOB_NAME_%s" % next_slot
                 if not tester["executed"].isdigit():
@@ -322,7 +322,7 @@ class MetricsParser(Parser):
                   'completion_time' : self.handle_time,
                   'CI_infra_failure' : self.handle_simple,
                   'CI_infra_failure_desc' : self.handle_simple1024,
-                  'job_names' : self.handle_simple256,
+                  'job_name' : self.handle_simple256,
                   'CI_tier' : self.handle_digit,
                   'build_type' : self.handle_build_type,
                   'owner' : self.handle_simple64,
@@ -512,7 +512,7 @@ class ParseCIMetricTests(unittest.TestCase):
                           "jenkins_job_url": "https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/job/kernel-general-rhel-kmod/",
                           "jenkins_build_url": "https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/job/kernel-general-rhel-kmod/272/",
                           "brew_task_id": "12388882",
-                          "job_names": "kernel-general-rhel-kmod",
+                          "job_name": "kernel-general-rhel-kmod",
                           "recipients": ["jbieren", "bpeck"]
                         }
                      """
