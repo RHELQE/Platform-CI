@@ -302,7 +302,7 @@ class MetricsParser(Parser):
         recipient_set = Set()
         if "recipients" in self.message_out:
             recipient_set.update(map(lambda x: x.strip(), \
-            message_out.get("recipients","").split(",")))
+            self.message_out.get("recipients","").split(",")))
 
         # Add new recipients to the set
         recipient_set.update(value)
