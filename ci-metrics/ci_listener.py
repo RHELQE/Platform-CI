@@ -509,8 +509,8 @@ class ParseCIMetricTests(unittest.TestCase):
                           "base_distro": "",
                           "completion_time": "2016-08-18T20:52:10Z",
                           "component": "kernel-3.10.0-547.el7",
-                          "jenkins_job_url": "https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/job/kernel-general-rhel-kmod/",
-                          "jenkins_build_url": "https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/job/kernel-general-rhel-kmod/272/",
+                          "jenkins_job_url": "https://platform-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/job/kernel-general-rhel-kmod/",
+                          "jenkins_build_url": "https://platform-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/job/kernel-general-rhel-kmod/272/",
                           "brew_task_id": "12388882",
                           "job_name": "kernel-general-rhel-kmod",
                           "recipients": ["jbieren", "bpeck"]
