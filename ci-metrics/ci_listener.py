@@ -302,7 +302,7 @@ class MetricsParser(Parser):
         recipient_set = Set()
         if "recipients" in self.message_out:
             recipient_set.update(map(lambda x: x.strip(), \
-            message_out.get("recipients","").split(",")))
+            self.message_out.get("recipients","").split(",")))
 
         # Add new recipients to the set
         recipient_set.update(value)
@@ -338,6 +338,9 @@ class MetricsParser(Parser):
 
         # Add field that shows CI Testing was done for kibana visualizations
         self.message_out['CI Testing Done'] = 'true'
+        # Add name as its own field so we can count how many
+        # unique package names have come in
+        self.message_out["name"] = '-'.join(self.message_in["component"].split('-')[:-2])
         # Convert message_in dict to array of tuples.
         # Items can come in any order but some handle routines
         # need data that may not have been handled yet.
