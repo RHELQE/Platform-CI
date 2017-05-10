@@ -260,36 +260,41 @@ class MetricsParser(Parser):
                     job_name = self.message_in["job_name"]
                 else:
                     job_name = "MISSING_JOB_NAME_%s" % next_slot
-                if not tester["executed"].isdigit():
+                if not isinstance(tester["executed"], int):
                     tester["executed"] = -1
-                if not tester["failed"].isdigit():
+                if not isinstance(tester["failed"], int):
                     tester["failed"] = -1
+                if not isinstance(tester["passed"], int):
+                    tester["passed"] = -1
                 start = self.message_out.get("create_time",
                                              "2000-01-01T00:00:00Z")
                 end = self.message_out.get("completion_time",
                                             "2000-01-01T00:00:00Z")
                 time_start = time.mktime(time.strptime(start, '%Y-%m-%dT%H:%M:%SZ'))
                 time_end = time.mktime(time.strptime(end, '%Y-%m-%dT%H:%M:%SZ'))
-                execed = int(tester["executed"])
-                failed = int(tester["failed"])
                 seconds = max(int(time_end - time_start), 0)
                 self.message_out["%s_job_%s" %
                     (executor, next_slot)] = job_name
                 self.message_out["%s_arch_%s" %
                     (executor, next_slot)] = tester["arch"]
+                if "subtest" in tester:
+                    self.message_out["%s_subtest_%s" %
+                        (executor, next_slot)] = tester["subtest"]
                 self.message_out["%s_tests_exec_%s" %
-                    (executor, next_slot)] = execed
+                    (executor, next_slot)] = tester["executed"]
                 self.message_out["%s_tests_failed_%s" %
-                    (executor, next_slot)] = failed
+                    (executor, next_slot)] = tester["failed"]
                 self.message_out["%s_time_spent_%s" %
                     (executor, next_slot)] = seconds
                 # Create some aggregated fields so that they
                 # don't have to be scripted in kibana
                 supplements = [ \
-                    ["%s_total_tests_exec" % executor, execed],
-                    ["total_tests_exec", execed],
-                    ["%s_total_tests_failed" % executor, failed],
-                    ["total_tests_failed", failed],
+                    ["%s_total_tests_exec" % executor, tester["executed"]],
+                    ["total_tests_exec", tester["executed"]],
+                    ["%s_total_tests_failed" % executor, tester["failed"]],
+                    ["total_tests_failed", tester["failed"]],
+                    ["%s_total_tests_passed" % executor, tester["passed"]],
+                    ["total_tests_passed", tester["passed"]],
                     ["total_time_secs", seconds],
                     ["total_time_mins", seconds/60.0],
                     ["total_time_hrs", seconds/3600.0]] 
@@ -502,7 +507,7 @@ class ParseCIMetricTests(unittest.TestCase):
         ci_message = """
                         CI_MESSAGE={
                           "create_time": "2016-08-18T20:13:51Z",
-                          "tests": [{"executor": "beaker", "arch": "", "executed": "60", "failed": "5"}],
+                          "tests": [{"executor": "beaker", "arch": "", "subtest": "somesubtest", "executed": 60, "failed": 5, "passed": 55}],
                           "CI_tier": "1",
                           "owner": "",
                           "build_type": "",
