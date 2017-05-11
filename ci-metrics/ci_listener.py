@@ -264,8 +264,11 @@ class MetricsParser(Parser):
                     tester["executed"] = -1
                 if not isinstance(tester["failed"], int):
                     tester["failed"] = -1
-                if not isinstance(tester["passed"], int):
-                    tester["passed"] = -1
+                if "passed" in tester:
+                    if not isinstance(tester["passed"], int):
+                        tester["passed"] = -1
+                else:
+                    tester["passed"] = tester["executed"] - tester["failed"]
                 start = self.message_out.get("create_time",
                                              "2000-01-01T00:00:00Z")
                 end = self.message_out.get("completion_time",
@@ -284,6 +287,8 @@ class MetricsParser(Parser):
                     (executor, next_slot)] = tester["executed"]
                 self.message_out["%s_tests_failed_%s" %
                     (executor, next_slot)] = tester["failed"]
+                self.message_out["%s_tests_passed_%s" %
+                    (executor, next_slot)] = tester["passed"]
                 self.message_out["%s_time_spent_%s" %
                     (executor, next_slot)] = seconds
                 # Create some aggregated fields so that they

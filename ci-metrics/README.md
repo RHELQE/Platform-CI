@@ -162,6 +162,7 @@ The possible items of the message are defined in this document [https://url.corp
                 "jenkins_build_url": "$BUILD_URL",
                 "brew_task_id": "$id",
                 "job_name": "$JOB_NAME",
+                "recipients": "someuser"
             }}
 ```
 
