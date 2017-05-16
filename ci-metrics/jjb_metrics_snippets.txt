@@ -30,12 +30,13 @@
             XUNIT_LINKS="$XUNIT_LINKS $JOB_URL/$BUILD_NUMBER/artifact/${{recipeSet}}_xUnit.xml"
         XUNIT_LINKS=$(echo "$XUNIT_LINKS" | tail -c +2)
         done
+        BKR_TESTS_PASSED=$((BKR_TESTS_EXEC-BKR_TESTS_FAILED))
         ARCH=''
         for myArch in $(bkr job-results $JOBID | xsltproc ./kernel/jenkins/helpers/job2metric.xsl - 2>&1 >/dev/null | cut -d ':' -f3 | sed -e 's/^[ \t]*//' | sort | uniq) ; do
             ARCH="$ARCH $myArch"
         done
         ARCH=${{ARCH:1:256}}
-        TESTS=('[{{"executor": "beaker", "arch": "'"$ARCH"'", "executed": "'$BKR_TESTS_EXEC'", "failed": "'$BKR_TESTS_FAILED'"}}]')
+        TESTS=('[{{"executor": "beaker", "arch": "'"$ARCH"'", "subtest": "foobar", "executed": $BKR_TESTS_EXEC, "failed": $BKR_TESTS_FAILED, "passed": $BKR_TESTS_PASSED}}]')
         CI_TIER=0
         if [[ -z $job_group ]] ; then OWNER=$job_group ; else OWNER=$owner ; fi
         if [[ "$scratch" = true ]] ; then BUILD=scratch ; else BUILD=official ; fi
@@ -84,6 +85,6 @@
                 "jenkins_job_url": "$JOB_URL",
                 "jenkins_build_url": "$BUILD_URL",
                 "brew_task_id": "$id",
-                "job_names": "$JOB_NAME",
-                "xunit_links": "$XUNIT_LINKS"
+                "job_name": "$JOB_NAME",
+                "recipients": "someuser"
             }}

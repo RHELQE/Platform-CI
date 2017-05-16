@@ -161,8 +161,8 @@ The possible items of the message are defined in this document [https://url.corp
                 "jenkins_job_url": "$JOB_URL",
                 "jenkins_build_url": "$BUILD_URL",
                 "brew_task_id": "$id",
-                "job_names": "$JOB_NAME",
-                "xunit_links": "$XUNIT_LINKS"
+                "job_name": "$JOB_NAME",
+                "recipients": "someuser"
             }}
 ```
 
