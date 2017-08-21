@@ -19,7 +19,7 @@
 
             # Sample job trigger for RTT_Accepted compose - other parameters may turn different in this case
             # Compose ID in $BUILD
-            #jms-selector: "CI_NAME='rtt-accepted-publisher'"
+            #jms-selector: "CI_NAME='rtt-accepted-publisher' AND TYPE='rel-eng'"
     builders:
         - shell: |
             #!/bin/bash -x
