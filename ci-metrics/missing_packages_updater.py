@@ -8,6 +8,7 @@
 # key for each package name is provided by the user.  Finally, it
 # pushes a log depicting the percent of the packages that have coverage
 # in localhost's elasticsearch instance.
+# Author: Johnny Bieren <jbieren@redhat.com>
 
 from __future__ import division
 from optparse import OptionParser
