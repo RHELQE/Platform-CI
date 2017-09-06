@@ -1,26 +1,14 @@
 ## This playbook sets up a basic ELK instance.  After execution,
 ## you will still need to create an index on the ELK instance
 ## and send logs to the ELK instance
+#
+## Note: To change kibana default loading page, modify
+## kibana.defaultAppId: in /etc/kibana/kibana.yml. Example:
+## kibana.defaultAppId: "dashboard/82470720-8e6a-11e7-bf16-955fd84ff7f6"
 
 - hosts: localhost
   remote_user: root
   tasks:
-  - name: Install wget
-    yum:
-      name: wget
-      state: latest
-  - name: wget the java jdk
-    shell: 'wget --no-cookies --no-check-certificate --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" "http://download.oracle.com/otn-pub/java/jdk/8u73-b02/jdk-8u73-linux-x64.rpm"'
-    args:
-      chdir: /root
-  - name: yum localinstall the java jdk
-    yum:
-      name: /root/jdk-8u73-linux-x64.rpm
-      state: present
-  - name: Remove the java jdk
-    file:
-      path: /root/jdk-8u73-linux-x64.rpm
-      state: absent
   - name: Insert elk repo
     blockinfile:
       dest: /etc/yum.repos.d/elk.repo
@@ -32,18 +20,22 @@
         gpgcheck=1
         gpgkey=https://packages.elastic.co/GPG-KEY-elasticsearch
         enabled=1
-        [kibana-4.5]
-        name=Kibana repository for 4.5.x packages
-        baseurl=http://packages.elastic.co/kibana/4.5/centos
+        [kibana-5.x]
+        name=Kibana repository for 5.x packages
+        baseurl=https://artifacts.elastic.co/packages/5.x/yum
         gpgcheck=1
-        gpgkey=http://packages.elastic.co/GPG-KEY-elasticsearch
+        gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
         enabled=1
-        [elasticsearch-2.x]
-        name=Elasticsearch repository for 2.x packages
-        baseurl=http://packages.elastic.co/elasticsearch/2.x/centos
+        autorefresh=1
+        type=rpm-md
+        [elasticsearch-5.x]
+        name=Elasticsearch repository for 5.x packages
+        baseurl=https://artifacts.elastic.co/packages/5.x/yum
         gpgcheck=1
-        gpgkey=http://packages.elastic.co/GPG-KEY-elasticsearch
+        gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
         enabled=1
+        autorefresh=1
+        type=rpm-md
         [Epel]
         name=epel
         baseurl=http://dl.fedoraproject.org/pub/epel/7/x86_64/
@@ -63,6 +55,7 @@
      - epel-release
      - nginx
      - httpd-tools
+     - java
   - name: Change elasticsearch network host
     replace:
       dest: /etc/elasticsearch/elasticsearch.yml
@@ -70,11 +63,6 @@
       replace: ' network.host{{ ":" }} 0.0.0.0'
   - name: Need selinux to be permissive
     shell: setenforce 0
-  - name: Change kibana server host
-    replace:
-      dest: /opt/kibana/config/kibana.yml
-      regexp: '# server.host{{ ":" }} "0.0.0.0"'
-      replace: ' server.host{{ ":" }} "localhost"'
   - name: Put better nginx conf file in place
     template:
       dest: /etc/nginx/nginx.conf
