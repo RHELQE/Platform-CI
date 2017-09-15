@@ -205,7 +205,7 @@ class MetricsParser(Parser):
     def handle_component(self, key, value, retried=False):
         if value.count('-') < 2:
             eprint("BAD NVR: %s" % value)
-            self.message_out["nvr"] = value[:256]
+        self.message_out["nvr"] = value[:256]
         return True
 
     def handle_brew_task_id(self, key, value, retried=False):
