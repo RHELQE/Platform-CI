@@ -169,6 +169,7 @@ class BrewParser(Parser):
                                                            self.get_version(),
                                                            self.get_release())
         self.message_out['nvr'] = self.get_nvr()
+        self.message_out['brew_name'] = self.get_name()
         if 'info' in self.message_in:
             for key, value in self.message_in['info'].items():
                 if key in fields:
