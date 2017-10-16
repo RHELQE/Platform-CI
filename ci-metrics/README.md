@@ -151,6 +151,7 @@ The possible items of the message are defined in this document [https://url.corp
           message-content: |
             {{
                 "create_time": "$CREATE_TIME",
+                "trigger": "brew build",
                 "tests": $TESTS,
                 "CI_tier": "$CI_TIER",
                 "owner": "$OWNER",
@@ -162,6 +163,7 @@ The possible items of the message are defined in this document [https://url.corp
                 "jenkins_build_url": "$BUILD_URL",
                 "brew_task_id": "$id",
                 "job_name": "$JOB_NAME",
+                "team": "$TEAM_NAME",
                 "recipients": "someuser"
             }}
 ```
