@@ -7,7 +7,9 @@
 # It also includes the provided distro for each said log. The field
 # key for each package name is provided by the user.  Finally, it
 # pushes a log depicting the percent of the packages that have coverage
-# in localhost's elasticsearch instance.
+# in localhost's elasticsearch instance. This script now does the same
+# for the brew_name.raw field, and pushes a log for existence as well
+# as nonexistence.
 # Author: Johnny Bieren <jbieren@redhat.com>
 
 from __future__ import division
@@ -24,40 +26,56 @@ def line_count(myfile):
             pass
     return(i[0])
 
-def num_pkgs_not_tested(myfile, distro, mykey):
+def get_pkgs(myfield):
     query = '''
     {
         "aggs" : {
-            "name.raw" : {
+            "%s" : {
                 "terms" : {
-                    "field": "name.raw", 
+                    "field": "%s", 
                     "size": 200
                 }
             }
         }
-    }'''
-    i = 0
+    }''' % (myfield, myfield)
     local_server = httplib.HTTPConnection('localhost:9200')
     local_server.request("POST", "/ci-metrics/_search?size=0", query)
     reply = local_server.getresponse()
     json_in = reply.read()
     namesjson = json.loads(json_in)
-    tested_pkgs = []
-    for name in namesjson['aggregations']['name.raw']['buckets']:
+    pkgs = []
+    for name in namesjson['aggregations'][myfield]['buckets']:
         if len(name['key']) > 1:
-            tested_pkgs.append(json.dumps(name['key']).strip("\""))
-    # Push a log with package name and distro for each package not tested
+            pkgs.append(json.dumps(name['key']).strip("\""))
+    return pkgs
+
+def num_pkgs_not_tested(myfile, distro, mykey):
+    tested_pkgs = get_pkgs('name.raw')
+    built_pkgs = get_pkgs('brew_name.raw')
+    i = 0
+    j = 0
+    # Push a log with package name and distro for each package not tested/built
     with open(myfile) as f:
         for key in f.read().splitlines():
-            if key not in tested_pkgs:
+            message_out = dict()
+            message_out['timestamp'] = int(time.time())*1000
+            message_out['base_distro'] = distro
+            if key in tested_pkgs:
+                message_out[mykey.split('_', 1)[0]+'_tested'] = 'true'
+                message_out[mykey.replace('_not', '_name')] = key
+            else:
                 i = i + 1
-                message_out = dict()
                 message_out[mykey] = key
-                message_out['timestamp'] = int(time.time())*1000
-                message_out['base_distro'] = distro
-                message_out['CI Testing Done'] = 'false'
-                push_log(message_out)
-    return i
+                message_out[mykey.split('_', 1)[0]+'_tested'] = 'false'
+            if key in built_pkgs:
+                message_out[mykey.split('_', 1)[0]+'_built'] = 'true'
+                message_out[(mykey.replace('_tested', '') + '_built').replace('_not', '_name')] = key
+            else:
+                j = j + 1
+                message_out[mykey.replace('_tested', '') + '_built'] = key
+                message_out[mykey.split('_', 1)[0]+'_built'] = 'false'
+            push_log(message_out)
+    return i, j
 
 def push_log(mymessage):
     output = json.dumps(mymessage, indent=4)
@@ -92,11 +110,14 @@ def main(args):
     
     message_out = dict()
     totalpackages = line_count(options.myfile)
-    not_tested = num_pkgs_not_tested(options.myfile, options.mydistro, options.mykey)
+    not_tested, not_built = num_pkgs_not_tested(options.myfile, options.mydistro, options.mykey)
     percent_key = options.mykey.replace('_not', '') + '_percent'
     message_out[percent_key] = (float((totalpackages - not_tested) / totalpackages * 100))
     message_out['base_distro'] = options.mydistro
     message_out['timestamp'] = int(time.time())*1000
+    push_log(message_out)
+    percent_key = percent_key.replace('_tested', '') + '_built'
+    message_out[percent_key] = (float((totalpackages - not_built) / totalpackages * 100))
     push_log(message_out)
 
 if __name__ == '__main__':
