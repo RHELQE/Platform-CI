@@ -12,7 +12,7 @@ upgrade_jjb()
     which pip || need_pip
     pip install --user --upgrade pip
     pip install --user --upgrade jenkins-job-builder
-    pip install --user --upgrade --index-url=http://ci-ops-jenkins-update-site.rhev-ci-vms.eng.rdu2.redhat.com/packages/simple --trusted-host ci-ops-jenkins-update-site.rhev-ci-vms.eng.rdu2.redhat.com jenkins-ci-sidekick
+    pip install --user --upgrade --index-url=http://ci-ops-jenkins-update-site.rhev-ci-vms.eng.rdu2.redhat.com/packages/simple --trusted-host ci-ops-jenkins-update-site.rhev-ci-vms.eng.rdu2.redhat.com jenkins-ci-sidekick==1.4.10
     # add default pip bin path to $PATH in case missed from some systems
     which jenkins-jobs || export PATH=$PATH:$HOME/.local/bin
 }
