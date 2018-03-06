@@ -10,6 +10,20 @@
                 - teammate2_ID
     triggers:
         - ci-trigger:
+            #
+            # Sample override-topic. With Unified Message Bus (UMB) support,
+            # this filed is required and should be a valid, unique name, which
+            # is similar to
+            #     "Consumer.rh-jenkins-ci-plugin.2a28a20e-53cf-4554-b350-e671fec99b0a.VirtualTopic.qe.ci.>"
+            #
+            # To get a UUID, please use the handy command in the following on
+            # your terminal, e.g.
+            #
+            # $ python3 -c "import uuid; print(str(uuid.uuid1()));"
+            # f123cd1e-2108-11e8-9692-0800276a2229
+            #
+            override-topic: Consumer.rh-jenkins-ci-plugin.<UUID>.VirtualTopic.qe.ci.>
+
             # Sample job trigger for official Brew builds
             # Build NVR will be in env var $name $version $release
             jms-selector: "type = 'BuildStateChange' AND name = '{component}'"
