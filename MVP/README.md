@@ -13,13 +13,13 @@ So it's also expected to be a common ground for teams to start with. And contrib
 
 ## How to create a CI job with MVP?
 
-1. ####Get MVP files
+1. #### Get MVP files
 
   >$ git clone https://github.com/RHQE/platform-ci.git
 
   >$ cd platform-ci/MVP
 
-1. ####Tweak [sample_job.yaml](/MVP/sample_job.yaml/) with your own test parameters
+2. #### Tweak [sample_job.yaml](/MVP/sample_job.yaml/) with your own test parameters
 
     *Job YAMLs store parameters which are specific for your testing jobs. It's recommended to maintain them in your team git repo.*
 
@@ -39,8 +39,6 @@ So it's also expected to be a common ground for teams to start with. And contrib
 
 	 The default trigger (in the form of jms-selector) is for official brew builds.
 
-	 You can uncomment another following jms-selector to enable different trigger accordingly.
-
   - `shell`
 
      THE key part of your job. Fill in the commands you are using for submitting tests into Beaker.
@@ -51,11 +49,14 @@ So it's also expected to be a common ground for teams to start with. And contrib
 
   - `name`/`component`
 
-     **name** is unique for identifying your job set.
+     **name** is the first half of your job's name on Platform CI. The second half is **component**.
 
      And job trigger is watching candidate brew builds for **component** by default.
 
-1. ####Create Jenkins job
+     **uuid** is a unique string (e.g. random 20-digit hex number) being used in override-topic of CI trigger for UMB to identify messaging clients.
+
+
+3. #### Create Jenkins job
 
   - Update [config.ini](/MVP/config.ini/) with your credentials on Platform Jenkins Master (PJM). It's requried for next step.
 
@@ -75,10 +76,8 @@ So it's also expected to be a common ground for teams to start with. And contrib
 
      >$ ./jenkins-jobs.sh test
 
-  - [Alternative choice](https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/job/Platform-CI-MVP-Job-Builder/build) to create/update jobs in case without a terminal.
 
-1. ####Done
-
+4. #### Done
 
 ## Other references that may help
 

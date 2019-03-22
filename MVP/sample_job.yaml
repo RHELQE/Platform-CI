@@ -1,5 +1,5 @@
 - job-template:
-    name: '{component}-{name}'
+    name: '{name}-{component}'
     defaults: defaults-build
     #node: 'jslave-of-your-own'
     properties:
@@ -11,23 +11,16 @@
     triggers:
         - ci-trigger:
             # Sample job trigger for official Brew builds
-            # Build NVR in $name $version $release
-            jms-selector: "name = '{component}' AND CI_TYPE = 'brew-tag' AND tag LIKE '%-candidate'"
+            # Build NVR will be in env var $name $version $release
+            jms-selector: "type = 'BuildStateChange' AND name = '{component}'"
+            override-topic: "Consumer.rh-jenkins-ci-plugin.{uuid}.VirtualTopic.eng.brew.build.complete"
 
-            # Sample job trigger for scratch Brew builds
-            #jms-selector: "name = '{component}' AND CI_TYPE = 'brew-taskstatechange' AND scratch = true"
-
-            # Sample job trigger for RTT_Accepted compose - other parameters may turn different in this case
-            # Compose ID in $BUILD
-            #jms-selector: "CI_NAME='rtt-accepted-publisher' AND TYPE='rel-eng'"
     builders:
         - shell: |
             #!/bin/bash -x
-
             # Here goes your shell commands for submitting beaker job here, and save the job ID into env var BKR_JOBID. E.g:
             bkr job-submit $YOUR_TEST_xml | tee $WORKSPACE/bkr_job.txt
             BKR_JOBID=`cut -d\' -f2 $WORKSPACE/bkr_job.txt`
-
             echo BKR_JOBID=$BKR_JOBID >> $WORKSPACE/job.properties
         - inject:
             properties-file: $WORKSPACE/job.properties
@@ -38,6 +31,9 @@
 
 - project:
     name: Platform-CI-MVP
+    # update component name to the one you wanna test
     component: sample
+    # update the uuid to an unique string, e.g. 20-digit random hex number
+    uuid: unique_uuid
     jobs:
-      - '{component}-{name}'
+      - '{name}-{component}'
