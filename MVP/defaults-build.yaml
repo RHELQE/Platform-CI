@@ -9,6 +9,8 @@
         - string:
             name: CI_TYPE
         - string:
+            name: MESSAGE_HEADERS
+        - string:
             name: CI_MESSAGE
         - string:
             name: tag
@@ -57,30 +59,57 @@
                     echo "TESTS=$TESTS" >> $WORKSPACE/job.properties
                 - inject:
                     properties-file: $WORKSPACE/job.properties
+        - postbuildscript:
+            script-only-if-succeeded: False
+            builders:
+                - shell: |
+                    # Steps to generate default/custom test result message to CI
+
+                    # Clone kernel-ci repo somewhere
+                    # Source libcim.sh
+                    cd kernel-ci
+                    export PROJECT_BUILDER_PACKROOT=$WORKSPACE/shared
+                    env >> $WORKSPACE/job.properties
+                    source $PROJECT_BUILDER_PACKROOT/lib/bash/libcim.sh
+
+                    # Call cim_putenv if you want to customize some values in the message
+                    # Otherwise cim_injectenv will generate message by best guess
+                    # Examples of calling cim_putenv:
+                    # cim_putenv "body.artifact.component" "${{your_component}}"
+                    # cim_putenv "body.namespace" "kernel-qe.kernel-ci.${{your_team}}.${{your_component}}"
+                    # cim_putenv "body.type" "tier0"
+
+                    # Determine what result should be sent
+                    if [ "${{#BKR_JOBID}}" -eq 0 ]; then
+                        # No test has been submitted
+                        test_result=$CIM_TEST_STATUS_FATAL
+                    elif [ "$BKR_TESTS_EXEC" -eq 0 ]; then
+                        # No test result has been retrieved
+                        test_result=$CIM_TEST_STATUS_ERROR
+                    elif [ "$BKR_TESTS_FAILED" -ne 0 ]; then
+                        # At least one test failed
+                        test_result=$CIM_TEST_STATUS_FAIL
+                    else
+                        # No test failed
+                        test_result=$CIM_TEST_STATUS_PASS
+                    fi
+
+                    # Call cim_injectenv to generate values which will be sent in CI-Publisher, including:
+                    #     CIM_MSG_TOPIC, CIM_MSG_HEAD, CIM_MSG_BODY
+                    cim_injectenv $test_result
+
+                - inject:
+                    properties-file: $WORKSPACE/job.properties
         - archive:
             artifacts: '*.txt, *.xml, *.properties'
             allow-empty: 'true'
         - junit:
             results: 'J:*.xml'
         - ci-publisher:
-            message-type: 'Tier1TestingDone'
-            message-properties: |
-                CI_TYPE=ci-metricsdata
-            message-content: |
-                {{
-                  "create_time": "$create_time",
-                  "tests": $TESTS,
-                  "CI_tier": "1",
-                  "owner": "$job_owner",
-                  "build_type": "",
-                  "base_distro": "",
-                  "completion_time": "$(date --utc +%FT%TZ)",
-                  "component": "$name-$version-$release",
-                  "jenkins_job_url": "$JOB_URL",
-                  "jenkins_build_url": "$BUILD_URL",
-                  "brew_task_id": "$task_id",
-                  "job_names": "$JOB_NAME",
-                }}
+            message-type: Custom
+            override-topic: ${{CIM_MSG_TOPIC}}
+            message-properties: ${{CIM_MSG_HEAD}}
+            message-content: ${{CIM_MSG_BODY}}
         - email-ext:
             recipients: ${{OWNERSHIP,var="JOB_COOWNERS_EMAILS"}}
             subject: $DEFAULT_SUBJECT [${{ENV,var="name"}}-${{ENV,var="version"}}-${{ENV,var="release"}}] (${{TEST_COUNTS,var="fail"}}/${{TEST_COUNTS}})
