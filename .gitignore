@@ -1,6 +1,0 @@
-.project
-.pydevproject
-.settings/
-build-on-push/.lock-waf_linux2_build
-build-on-push/build
-*.pyc
