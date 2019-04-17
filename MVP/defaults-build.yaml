@@ -67,7 +67,7 @@
 
                     # Clone kernel-ci repo somewhere
                     # Source libcim.sh
-                    cd kernel-ci
+                    cd kernel-ci || exit 0
                     export PROJECT_BUILDER_PACKROOT=$WORKSPACE/shared
                     env >> $WORKSPACE/job.properties
                     source $PROJECT_BUILDER_PACKROOT/lib/bash/libcim.sh
