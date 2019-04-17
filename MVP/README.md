@@ -62,7 +62,7 @@ So it's also expected to be a common ground for teams to start with. And contrib
 
     **user** is your username of PJM - same as your kerberos ID.
 
-    **password** is an API token which can be found by clicking `Show API Token...` button on your user configure page. (*https://platform-stg-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/user/${user}/configure*)
+    **password** is an API token which can be found by clicking `Show API Token...` button on your user configure page. (*https://platform-jenkins.rhev-ci-vms.eng.rdu2.redhat.com/user/${user}/configure*)
 
   - Create/Update your jobs to PJM (Finally!)
 
